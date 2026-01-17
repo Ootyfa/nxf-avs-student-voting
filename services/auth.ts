@@ -1,3 +1,4 @@
+
 import { supabase } from './supabase';
 import { University } from '../types';
 
@@ -18,6 +19,29 @@ export const getUniversities = async (): Promise<University[]> => {
   } catch (err) {
     console.error("Unexpected error fetching universities:", err);
     return [];
+  }
+};
+
+// NEW: Save User Profile immediately during Onboarding
+export const registerNewUser = async (email: string, name: string, universityId?: string) => {
+  try {
+    const { error } = await supabase
+      .from('user_profiles')
+      .upsert({
+        email: email,
+        name: name,
+        university_id: universityId || null,
+        // We don't overwrite points if they exist, but if new, default to 0
+      }, { onConflict: 'email' });
+
+    if (error) {
+      console.error("Error saving profile to Supabase:", error.message);
+      return false;
+    }
+    return true;
+  } catch (e) {
+    console.error("Register user exception:", e);
+    return false;
   }
 };
 

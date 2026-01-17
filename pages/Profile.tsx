@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { CheckCircle, Shield, X, Smartphone, Bookmark, Share2, GraduationCap, School, Search, Pencil, Crown, Circle } from 'lucide-react';
 import { MOCK_USERS } from '../services/mockData';
@@ -291,16 +292,19 @@ const ProfilePage: React.FC = () => {
             </div>
         </div>
 
-        {/* Privacy & Legal */}
-        <div className="mt-8 pt-4 pb-8 flex flex-col items-center justify-center text-center">
-            <Shield size={20} className="text-slate-300 mb-2" />
+        {/* Branding Footer */}
+        <div className="mt-8 pt-4 pb-4 border-t border-slate-100 text-center">
+            <p className="text-[10px] text-slate-400 font-semibold mb-3">
+              Powered by <span className="text-brand-600">NilgirisNext Foundation for Art & Culture</span>
+            </p>
             <button 
                 onClick={() => setShowPrivacy(true)}
-                className="text-xs font-bold text-slate-400 hover:text-slate-800 border-b border-transparent hover:border-slate-800 transition-all"
+                className="text-[10px] font-bold text-slate-300 hover:text-slate-500 transition-colors"
             >
-                View Privacy Policy & GDPR Info
+                Privacy Policy & Legal
             </button>
         </div>
+
       </div>
 
       {/* --- CAMPUS SELECTION MODAL --- */}
