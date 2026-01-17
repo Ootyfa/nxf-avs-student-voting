@@ -1,9 +1,10 @@
 
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Clapperboard, Sparkles, User, ChevronRight, Check, School, Mail, Loader2 } from 'lucide-react';
+import { User, ChevronRight, Check, School, Mail, Loader2 } from 'lucide-react';
 import { getUniversities, registerNewUser } from '../services/auth';
 import { University } from '../types';
+import BrandLogo from '../components/BrandLogo';
 
 const OnboardingPage: React.FC = () => {
   const navigate = useNavigate();
@@ -44,7 +45,6 @@ const OnboardingPage: React.FC = () => {
     }
     
     // 2. Save to Supabase (Cloud Persistence)
-    // This ensures if they clear cache or switch devices, their email retrieves their profile later
     await registerNewUser(email.trim(), name.trim(), selectedUni?.id);
     
     setIsSubmitting(false);
@@ -65,25 +65,25 @@ const OnboardingPage: React.FC = () => {
       case 0:
         return (
           <div className="flex flex-col items-center text-center space-y-6 animate-fade-in w-full max-w-xs mx-auto">
-            {/* Visual with Animation */}
-            <div className="relative w-32 h-32 flex items-center justify-center mb-2">
-               <div className="absolute inset-0 bg-brand-500 rounded-[2rem] rotate-6 opacity-10 animate-pulse"></div>
-               <div className="absolute inset-0 bg-brand-600 rounded-[2rem] -rotate-6 opacity-10 animate-pulse delay-75"></div>
-               <div className="relative z-10 bg-white p-5 rounded-3xl shadow-soft border border-brand-50">
-                  <Clapperboard size={40} className="text-brand-600 mb-2" />
-                  <div className="absolute -top-2 -right-2 bg-yellow-400 p-1.5 rounded-full shadow-lg animate-bounce">
-                      <Sparkles size={14} className="text-white" />
-                  </div>
+            {/* Custom Logo Wrapper with Glow Effects */}
+            <div className="relative w-36 h-36 flex items-center justify-center mb-4">
+               {/* Background Blobs */}
+               <div className="absolute inset-0 bg-accent-400 rounded-[2.5rem] rotate-6 opacity-20 animate-pulse"></div>
+               <div className="absolute inset-0 bg-red-400 rounded-[2.5rem] -rotate-6 opacity-20 animate-pulse delay-75"></div>
+               
+               {/* Reusable Logo Component */}
+               <div className="relative z-10 shadow-xl rounded-[2rem]">
+                  <BrandLogo size="xl" />
                </div>
             </div>
 
             <div className="space-y-3">
-              <h1 className="text-2xl font-black text-slate-900 leading-tight">
+              <h1 className="text-3xl font-black text-slate-900 leading-tight tracking-tight">
                 NXF AVS <br/>
-                <span className="text-brand-600 text-lg">Advance Voting System</span>
+                <span className="text-brand-600 text-xl tracking-normal">Advance Voting System</span>
               </h1>
-              <p className="text-slate-500 text-xs font-medium leading-relaxed px-4">
-                The official platform for the Film Festival. Represent your college, rate documentaries, and earn rewards.
+              <p className="text-slate-500 text-sm font-medium leading-relaxed px-4">
+                The official platform for the <strong className="text-slate-800">ATOM Film Festival</strong>. Represent your college, rate documentaries, and earn rewards.
               </p>
             </div>
           </div>
@@ -92,7 +92,7 @@ const OnboardingPage: React.FC = () => {
         return (
           <div className="flex flex-col w-full animate-fade-in px-1 h-full">
              <div className="text-center mb-6 flex-shrink-0">
-               <div className="w-16 h-16 bg-gradient-to-br from-brand-50 to-blue-50 rounded-2xl flex items-center justify-center mx-auto mb-3 border border-brand-100 shadow-sm">
+               <div className="w-16 h-16 bg-gradient-to-br from-brand-50 to-orange-50 rounded-2xl flex items-center justify-center mx-auto mb-3 border border-brand-100 shadow-sm">
                  <User size={28} className="text-brand-600" />
                </div>
                <h1 className="text-xl font-black text-slate-900 mb-1">Student Profile</h1>
@@ -113,7 +113,7 @@ const OnboardingPage: React.FC = () => {
                  />
                </div>
 
-               {/* Email Input - Added for Supabase Storage */}
+               {/* Email Input */}
                <div className="space-y-1.5">
                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider ml-1">Email Address <span className="text-red-500">*</span></label>
                  <div className="relative">
@@ -208,8 +208,8 @@ const OnboardingPage: React.FC = () => {
     // Uses 100dvh (Dynamic Viewport Height) to ensure it fits perfectly on mobile browsers
     <div className="h-[100dvh] bg-white flex flex-col p-6 pb-safe max-w-md mx-auto relative overflow-hidden">
       
-      {/* Decorative background blur */}
-      <div className="absolute top-[-20%] left-[-20%] w-[150%] h-[50%] bg-brand-50/50 blur-3xl rounded-full -z-10 pointer-events-none"></div>
+      {/* Decorative background blur (Red/Yellow) */}
+      <div className="absolute top-[-20%] left-[-20%] w-[150%] h-[50%] bg-brand-50/80 blur-3xl rounded-full -z-10 pointer-events-none"></div>
 
       {/* Header */}
       <div className="w-full flex justify-between items-center h-12 flex-shrink-0">
@@ -252,7 +252,7 @@ const OnboardingPage: React.FC = () => {
           className={`w-full py-3.5 rounded-2xl font-bold text-base shadow-lg transition-all flex items-center justify-center group ${
             (step === 1 && !isStep1Valid) || isSubmitting
             ? 'bg-slate-100 text-slate-300 cursor-not-allowed shadow-none' 
-            : 'bg-slate-900 text-white shadow-slate-200 hover:bg-slate-800 active:scale-[0.98]'
+            : 'bg-brand-600 text-white shadow-brand-200 hover:bg-brand-700 active:scale-[0.98]'
           }`}
         >
           {isSubmitting ? (
@@ -264,8 +264,8 @@ const OnboardingPage: React.FC = () => {
             </>
           ) : (
             <>
-               Next
-               <ChevronRight size={18} className="ml-2 opacity-60 group-hover:translate-x-1 transition-transform" />
+               Get Started
+               <ChevronRight size={18} className="ml-2 opacity-80 group-hover:translate-x-1 transition-transform" />
             </>
           )}
         </button>

@@ -1,8 +1,10 @@
+
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { PlayCircle, Trophy, Star, Users, BarChart3, MapPin, Calendar, Clock, AlertCircle } from 'lucide-react';
+import { PlayCircle, Trophy, Star, Users, BarChart3, MapPin, Calendar, AlertCircle } from 'lucide-react';
 import { supabase } from '../services/supabase';
 import { Film, University, Festival } from '../types';
+import BrandLogo from '../components/BrandLogo';
 
 const HomePage: React.FC = () => {
   const navigate = useNavigate();
@@ -35,14 +37,12 @@ const HomePage: React.FC = () => {
                 setActiveFestival(festivalData as Festival);
             }
 
-            // 2. Fetch Real-time Stats (Using Exact Count)
-            // Votes Count
+            // 2. Fetch Real-time Stats
             const { count: votesCount } = await supabase
               .from('film_votes')
               .select('*', { count: 'exact', head: true });
             if (votesCount !== null) setTotalVotes(votesCount);
 
-            // Students Count (Profiles)
             const { count: studentsCount } = await supabase
               .from('user_profiles')
               .select('*', { count: 'exact', head: true });
@@ -92,9 +92,12 @@ const HomePage: React.FC = () => {
       {/* 1. Header Section */}
       <div className="bg-white px-6 pt-12 pb-4 border-b border-slate-100 sticky top-0 z-40">
         <div className="flex justify-between items-center">
-          <div>
-            <h1 className="text-xl font-black text-slate-900 tracking-tight">NXF AVS</h1>
-            <p className="text-xs text-brand-600 font-bold tracking-wide uppercase">Advance Voting System</p>
+          <div className="flex items-center gap-3">
+            <BrandLogo size="sm" />
+            <div>
+               <h1 className="text-lg font-black text-slate-900 tracking-tight leading-none">NXF AVS</h1>
+               <p className="text-[10px] text-brand-600 font-bold tracking-wide uppercase">Advance Voting System</p>
+            </div>
           </div>
           <button 
             onClick={() => navigate('/profile')}
