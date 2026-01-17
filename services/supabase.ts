@@ -1,8 +1,39 @@
 
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = 'https://hnghydnripsieemsvmoc.supabase.co';
-const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhuZ2h5ZG5yaXBzaWVlbXN2bW9jIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg1NTY4OTcsImV4cCI6MjA4NDEzMjg5N30.vv9KjCztJs7UQvzN_-9JalN5jboKjS94wABPZo__KoA';
+// Access Environment Variables securely
+// We use a helper with optional chaining to prevent crashes if import.meta.env is undefined
+// which can happen in certain runtime environments or build configurations.
+const getEnvVar = (key: string) => {
+  try {
+    // 1. Try Vite approach (import.meta.env)
+    // Use optional chaining (?.) to avoid "undefined is not an object" error
+    const viteEnv = (import.meta as any)?.env?.[key];
+    if (viteEnv) return viteEnv;
+    
+    // 2. Try Process (Create React App / Webpack / Node)
+    // Check if process is defined to avoid ReferenceError
+    if (typeof process !== 'undefined' && process.env) {
+      // Check for exact key or REACT_APP_ prefix
+      return process.env[key] || process.env[`REACT_APP_${key.replace('VITE_', '')}`];
+    }
+  } catch (e) {
+    console.warn('Error reading env var:', key);
+  }
+  return '';
+};
+
+const envUrl = getEnvVar('VITE_SUPABASE_URL');
+const envKey = getEnvVar('VITE_SUPABASE_ANON_KEY');
+
+// Fallback to prevent crash if env vars are missing (e.g. during build or initial setup)
+// Use a placeholder URL that matches Supabase format to pass validation
+const supabaseUrl = envUrl || 'https://placeholder.supabase.co';
+const supabaseKey = envKey || 'placeholder-key';
+
+if (!envUrl || !envKey) {
+  console.warn("Supabase credentials missing! Ensure VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY are set in your .env file or Netlify settings.");
+}
 
 export const supabase = createClient(supabaseUrl, supabaseKey);
 

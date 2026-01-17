@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { HashRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Layout from './components/Layout';
@@ -6,6 +7,7 @@ import ProfilePage from './pages/Profile';
 import FilmsPage from './pages/Films';
 import LeaderboardPage from './pages/Leaderboard';
 import OnboardingPage from './pages/Onboarding';
+import AdminPage from './pages/Admin';
 
 // Wrapper component to check onboarding status dynamically
 const ProtectedHome: React.FC = () => {
@@ -22,6 +24,9 @@ const App: React.FC = () => {
     <Router>
       <Routes>
         <Route path="/onboarding" element={<OnboardingPage />} />
+        
+        {/* Hidden Admin Route - in a real app, wrap this in authentication! */}
+        <Route path="/admin" element={<AdminPage />} />
         
         <Route path="/" element={<Layout />}>
           <Route index element={<ProtectedHome />} />

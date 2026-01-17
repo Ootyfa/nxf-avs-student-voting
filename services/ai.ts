@@ -1,6 +1,8 @@
+
 import { GoogleGenAI, Type } from "@google/genai";
 
-// Initialize AI Client with the provided key
+// Initialize AI Client with the provided key from Environment Variables
+// Use process.env.API_KEY directly as per strict guidelines
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 export interface ReviewGrade {
