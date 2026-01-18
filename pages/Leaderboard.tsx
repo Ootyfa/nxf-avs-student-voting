@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Trophy, Medal, Star, School, Film as FilmIcon } from 'lucide-react';
 import { supabase } from '../services/supabase';
@@ -30,9 +31,12 @@ const LeaderboardPage: React.FC = () => {
               }
           } else {
               // Fetch Universities from Supabase
+              // CRITICAL: Only show universities that have actual points (> 0)
+              // This ensures newly added "empty" universities don't spam the leaderboard
               const { data, error } = await supabase
                   .from('universities')
                   .select('*')
+                  .gt('points', 0)
                   .order('points', { ascending: false })
                   .limit(10);
               
@@ -159,7 +163,7 @@ const LeaderboardPage: React.FC = () => {
                           </div>
                         </div>
                       )) : (
-                          <div className="p-6 text-center text-slate-400">No university data found in database.</div>
+                          <div className="p-6 text-center text-slate-400">No active universities on the leaderboard yet.</div>
                       )}
                    </div>
                )}

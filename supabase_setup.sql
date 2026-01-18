@@ -144,6 +144,7 @@ create policy "Public Update Master" on public.master_films for update using (tr
 
 create policy "Public Read Unis" on public.universities for select using (true);
 create policy "Public Update Unis" on public.universities for update using (true); -- needed for point increment
+create policy "Public Insert Unis" on public.universities for insert with check (true); -- ADDED: Allow users to create new unis
 
 create policy "Public Read Festivals" on public.festivals for select using (true);
 create policy "Public Read FestivalFilms" on public.festival_films for select using (true);

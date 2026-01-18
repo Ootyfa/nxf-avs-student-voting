@@ -23,7 +23,33 @@ export const getUniversities = async (): Promise<University[]> => {
   }
 };
 
-// NEW: Save User Profile immediately during Onboarding
+// NEW: Allow user to add a new university if theirs is missing
+export const addNewUniversity = async (name: string, location: string): Promise<University | null> => {
+  try {
+    const { data, error } = await supabase
+      .from('universities')
+      .insert({ 
+        name: name.trim(), 
+        location: location.trim(), 
+        logo: '🎓', // Default emoji logo
+        active_students: 0,
+        points: 0 
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.error("Error creating university:", error.message, error.details);
+      return null;
+    }
+    return data as University;
+  } catch (e) {
+    console.error("Exception creating university:", e);
+    return null;
+  }
+};
+
+// Save User Profile immediately during Onboarding
 export const registerNewUser = async (email: string, name: string, universityId?: string) => {
   try {
     const { error } = await supabase

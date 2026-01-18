@@ -1,8 +1,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Film, User, ChevronRight, Check, School, Mail, Loader2, Play } from 'lucide-react';
-import { getUniversities, registerNewUser } from '../services/auth';
+import { Film, User, ChevronRight, Check, School, Mail, Loader2, Play, Plus, MapPin, ArrowLeft } from 'lucide-react';
+import { getUniversities, registerNewUser, addNewUniversity } from '../services/auth';
 import { University } from '../types';
 
 const OnboardingPage: React.FC = () => {
@@ -17,6 +17,12 @@ const OnboardingPage: React.FC = () => {
   const [selectedUni, setSelectedUni] = useState<University | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [showDropdown, setShowDropdown] = useState(false);
+
+  // Add New Uni State
+  const [isAddingUni, setIsAddingUni] = useState(false);
+  const [newUniName, setNewUniName] = useState('');
+  const [newUniLocation, setNewUniLocation] = useState('');
+  const [isCreatingUni, setIsCreatingUni] = useState(false);
 
   // Load Universities on Mount
   useEffect(() => {
@@ -48,6 +54,22 @@ const OnboardingPage: React.FC = () => {
     
     setIsSubmitting(false);
     navigate('/');
+  };
+
+  const handleCreateUniversity = async () => {
+    if (!newUniName.trim() || !newUniLocation.trim()) return;
+    
+    setIsCreatingUni(true);
+    const newUni = await addNewUniversity(newUniName, newUniLocation);
+    
+    if (newUni) {
+        // Success: Select it and close add mode
+        setSelectedUni(newUni);
+        setUniversities(prev => [...prev, newUni]); // Optimistic update
+        setIsAddingUni(false);
+        setSearchQuery(''); 
+    }
+    setIsCreatingUni(false);
   };
 
   // Filter Universities
@@ -131,7 +153,7 @@ const OnboardingPage: React.FC = () => {
                  />
                </div>
 
-               {/* Email Input - Added for Supabase Storage */}
+               {/* Email Input */}
                <div className="space-y-1.5">
                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider ml-1">Email Address <span className="text-red-500">*</span></label>
                  <div className="relative">
@@ -146,68 +168,137 @@ const OnboardingPage: React.FC = () => {
                  </div>
                </div>
 
-               {/* University Searchable Dropdown */}
-               <div className="space-y-1.5 relative z-20">
-                 <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider ml-1">College / University <span className="text-red-500">*</span></label>
-                 
-                 <div className="relative">
-                    <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
-                        <School size={16} />
-                    </div>
-                    <input 
-                        type="text"
-                        value={selectedUni ? selectedUni.name : searchQuery}
-                        onChange={(e) => {
-                            setSearchQuery(e.target.value);
-                            setSelectedUni(null);
-                            setShowDropdown(true);
-                        }}
-                        onFocus={() => setShowDropdown(true)}
-                        placeholder="Search your college..."
-                        className={`w-full pl-10 pr-4 py-3.5 bg-slate-50 border rounded-xl font-medium text-slate-900 outline-none transition-all text-sm ${selectedUni ? 'border-brand-500 bg-brand-50/50' : 'border-slate-200 focus:border-brand-500'}`}
-                    />
-                    {selectedUni && (
-                        <button 
-                            onClick={() => { setSelectedUni(null); setSearchQuery(''); }}
-                            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-red-500"
-                        >
-                            <span className="text-[10px] font-bold uppercase">Change</span>
-                        </button>
-                    )}
-                 </div>
-
-                 {/* Dropdown List */}
-                 {showDropdown && !selectedUni && (
-                     <div className="absolute z-50 w-full mt-1 bg-white border border-slate-100 rounded-xl shadow-xl max-h-48 overflow-y-auto no-scrollbar">
-                         {filteredUnis.length > 0 ? (
-                             filteredUnis.map(uni => (
-                                 <button
-                                    key={uni.id}
-                                    onClick={() => {
-                                        setSelectedUni(uni);
-                                        setShowDropdown(false);
-                                        setSearchQuery('');
-                                    }}
-                                    className="w-full text-left px-4 py-3 hover:bg-slate-50 flex items-center gap-3 border-b border-slate-50 last:border-0"
-                                 >
-                                     <span className="text-lg">{uni.logo}</span>
-                                     <div className="min-w-0">
-                                         <div className="text-sm font-bold text-slate-900 truncate">{uni.name}</div>
-                                         <div className="text-[10px] text-slate-500 truncate">{uni.location || 'India'}</div>
-                                     </div>
-                                 </button>
-                             ))
-                         ) : (
-                             <div className="p-4 text-center text-slate-400 text-xs">
-                                 No college found. <br/>
-                                 Select "Other" if not listed.
-                             </div>
-                         )}
+               {/* University Section - Either Search or Create */}
+               {!isAddingUni ? (
+                   <div className="space-y-1.5 relative z-20">
+                     <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider ml-1">College / University <span className="text-red-500">*</span></label>
+                     
+                     <div className="relative">
+                        <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
+                            <School size={16} />
+                        </div>
+                        <input 
+                            type="text"
+                            value={selectedUni ? selectedUni.name : searchQuery}
+                            onChange={(e) => {
+                                setSearchQuery(e.target.value);
+                                setSelectedUni(null);
+                                setShowDropdown(true);
+                            }}
+                            onFocus={() => setShowDropdown(true)}
+                            placeholder="Search your college..."
+                            className={`w-full pl-10 pr-4 py-3.5 bg-slate-50 border rounded-xl font-medium text-slate-900 outline-none transition-all text-sm ${selectedUni ? 'border-brand-500 bg-brand-50/50' : 'border-slate-200 focus:border-brand-500'}`}
+                        />
+                        {selectedUni && (
+                            <button 
+                                onClick={() => { setSelectedUni(null); setSearchQuery(''); }}
+                                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-red-500"
+                            >
+                                <span className="text-[10px] font-bold uppercase">Change</span>
+                            </button>
+                        )}
                      </div>
-                 )}
-               </div>
+
+                     {/* Dropdown List */}
+                     {showDropdown && !selectedUni && (
+                         <div className="absolute z-50 w-full mt-1 bg-white border border-slate-100 rounded-xl shadow-xl max-h-48 overflow-y-auto no-scrollbar">
+                             {filteredUnis.length > 0 ? (
+                                 <>
+                                    {filteredUnis.map(uni => (
+                                        <button
+                                            key={uni.id}
+                                            onClick={() => {
+                                                setSelectedUni(uni);
+                                                setShowDropdown(false);
+                                                setSearchQuery('');
+                                            }}
+                                            className="w-full text-left px-4 py-3 hover:bg-slate-50 flex items-center gap-3 border-b border-slate-50 last:border-0"
+                                        >
+                                            <span className="text-lg">{uni.logo}</span>
+                                            <div className="min-w-0">
+                                                <div className="text-sm font-bold text-slate-900 truncate">{uni.name}</div>
+                                                <div className="text-[10px] text-slate-500 truncate">{uni.location || 'India'}</div>
+                                            </div>
+                                        </button>
+                                    ))}
+                                    {/* Action at bottom of list */}
+                                    <div className="p-2 border-t border-slate-50 sticky bottom-0 bg-white">
+                                        <button 
+                                            onClick={() => {
+                                                setIsAddingUni(true);
+                                                setShowDropdown(false);
+                                                setNewUniName(searchQuery); // Pre-fill with what they typed
+                                            }}
+                                            className="w-full py-2.5 rounded-lg border border-slate-200 text-xs font-bold text-brand-600 hover:bg-brand-50 flex items-center justify-center gap-1"
+                                        >
+                                            <Plus size={14} /> Add "{searchQuery || 'New'}"
+                                        </button>
+                                    </div>
+                                 </>
+                             ) : (
+                                 <div className="p-4 text-center">
+                                     <p className="text-slate-400 text-xs mb-3">No college found matching "{searchQuery}"</p>
+                                     <button 
+                                        onClick={() => {
+                                            setIsAddingUni(true);
+                                            setShowDropdown(false);
+                                            setNewUniName(searchQuery);
+                                        }}
+                                        className="bg-brand-50 text-brand-600 px-4 py-2 rounded-lg text-xs font-bold w-full"
+                                     >
+                                         + Add New College
+                                     </button>
+                                 </div>
+                             )}
+                         </div>
+                     )}
+                   </div>
+               ) : (
+                   <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 animate-fade-in relative z-20">
+                       <div className="flex justify-between items-center mb-3">
+                           <h3 className="font-bold text-slate-900 text-sm">Add New Campus</h3>
+                           <button onClick={() => setIsAddingUni(false)} className="text-slate-400 hover:text-slate-600">
+                               <ArrowLeft size={16} />
+                           </button>
+                       </div>
+                       
+                       <div className="space-y-3">
+                           <div>
+                               <label className="text-[10px] font-bold text-slate-500 uppercase">College Name</label>
+                               <input 
+                                   type="text" 
+                                   value={newUniName}
+                                   onChange={(e) => setNewUniName(e.target.value)}
+                                   placeholder="e.g. St. Xavier's College"
+                                   className="w-full p-2 bg-white border border-slate-200 rounded-lg text-sm font-medium outline-none focus:border-brand-500 mt-1"
+                               />
+                           </div>
+                           <div>
+                               <label className="text-[10px] font-bold text-slate-500 uppercase">City / Location</label>
+                               <div className="relative">
+                                    <MapPin className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
+                                    <input 
+                                        type="text" 
+                                        value={newUniLocation}
+                                        onChange={(e) => setNewUniLocation(e.target.value)}
+                                        placeholder="e.g. Mumbai"
+                                        className="w-full pl-8 pr-3 py-2 bg-white border border-slate-200 rounded-lg text-sm font-medium outline-none focus:border-brand-500 mt-1"
+                                    />
+                               </div>
+                           </div>
+                           <button 
+                               onClick={handleCreateUniversity}
+                               disabled={!newUniName || !newUniLocation || isCreatingUni}
+                               className="w-full bg-slate-900 text-white py-2.5 rounded-lg text-xs font-bold flex items-center justify-center gap-2 mt-2"
+                           >
+                               {isCreatingUni ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
+                               Save & Select
+                           </button>
+                       </div>
+                   </div>
+               )}
                
-               {selectedUni && (
+               {selectedUni && !isAddingUni && (
                    <div className="bg-green-50 text-green-700 px-3 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 animate-fade-in">
                        <Check size={14} />
                        You are representing {selectedUni.name}
