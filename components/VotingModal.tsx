@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Star, X, Mail, MessageSquare, Sparkles, CheckCircle, ArrowRight, Share2, School, Info } from 'lucide-react';
 import { supabase } from '../services/supabase';
@@ -45,11 +44,11 @@ const VotingModal: React.FC<VotingModalProps> = ({ filmId, filmTitle, onClose, o
   // 1. Submit Rating
   const handleRatingSubmit = async () => {
     // Validate all categories are filled
-    const values = Object.values(categoryRatings);
-    if (values.some((v: number) => v === 0)) return;
+    const values = Object.values(categoryRatings) as number[];
+    if (values.some((v) => v === 0)) return;
 
     // Calculate Average (Rounded)
-    const sum = values.reduce((acc: number, curr: number) => acc + curr, 0);
+    const sum = values.reduce((acc, curr) => acc + curr, 0);
     const average = Math.round(sum / values.length);
     setRating(average);
     

@@ -1,9 +1,17 @@
 
 import { GoogleGenAI, Type } from "@google/genai";
 
-// Initialize AI Client with the provided key from Environment Variables
-// Use process.env.API_KEY directly as per strict guidelines
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+// Initialize AI Client securely
+// We check if the key exists to prevent crashing the app if .env is missing
+// We also trim() the key to ensure no accidental spaces from copy-pasting break the client
+const apiKey = (process.env.API_KEY || "").trim();
+const ai = apiKey ? new GoogleGenAI({ apiKey }) : null;
+
+if (ai) {
+  console.log("AI Service: Online (Key Loaded)");
+} else {
+  console.log("AI Service: Offline (Key Missing)");
+}
 
 export interface ReviewGrade {
   qualityScore: number;
@@ -13,6 +21,17 @@ export interface ReviewGrade {
 }
 
 export const gradeUserReview = async (filmTitle: string, reviewText: string): Promise<ReviewGrade> => {
+  // 1. Safety Check: If API key is missing, return fallback immediately
+  if (!ai) {
+    console.warn("AI Grading Skipped: API_KEY is missing.");
+    return {
+        qualityScore: 5,
+        pointsAwarded: 10,
+        sentiment: 'Neutral',
+        constructiveFeedback: 'AI features unavailable (Key missing). Points awarded for participation.'
+    };
+  }
+
   try {
     // Validate input to prevent sending empty or weird prompts
     if (!reviewText || reviewText.length < 5) {
