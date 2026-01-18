@@ -59,13 +59,14 @@ const FilmDetailModal: React.FC<FilmDetailModalProps> = ({ film, onClose, onVote
         onClick={(e) => e.stopPropagation()}
       >
         
-        {/* Header Image */}
-        <div className="relative h-64 sm:h-72 bg-slate-100 flex-shrink-0">
+        {/* Header Image (Clean, no text) */}
+        <div className="relative h-56 sm:h-64 bg-slate-100 flex-shrink-0">
           <img 
             src={displayImage} 
             alt={film.title} 
             className="w-full h-full object-cover"
           />
+          {/* Controls Overlay */}
           <button 
             onClick={onClose}
             className="absolute top-4 right-4 w-10 h-10 bg-black/40 hover:bg-black/60 backdrop-blur-md rounded-full text-white flex items-center justify-center transition-all z-10 active:scale-95"
@@ -78,22 +79,28 @@ const FilmDetailModal: React.FC<FilmDetailModalProps> = ({ film, onClose, onVote
             <span className="text-white text-xs font-bold">{formatRating(film.rating)}</span>
           </div>
 
-          <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-transparent to-transparent opacity-80"></div>
-          
-          <div className="absolute bottom-0 left-0 w-full p-6">
-              <span className="inline-block px-2 py-0.5 rounded-md bg-brand-600 text-white text-[10px] font-bold uppercase tracking-wider mb-2 shadow-sm">
-                 {film.category || film.genre || 'Documentary'}
-              </span>
-              <h2 className="text-2xl font-black text-white leading-tight mb-1">{film.title}</h2>
-              <p className="text-slate-300 text-sm font-medium">{film.director}</p>
-          </div>
+          {/* Subtle gradient for depth, but no heavy overlay */}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent pointer-events-none"></div>
         </div>
 
-        {/* Scrollable Content */}
+        {/* Scrollable Content Body */}
         <div className="flex-grow overflow-y-auto p-6 space-y-6 bg-white no-scrollbar">
             
+            {/* Title & Main Info (Moved here from poster) */}
+            <div>
+                <span className="inline-block px-2.5 py-1 rounded-md bg-brand-50 text-brand-600 text-[10px] font-bold uppercase tracking-wider mb-3">
+                     {film.category || film.genre || 'Documentary'}
+                </span>
+                <h2 className="text-2xl font-black text-slate-900 leading-tight mb-2">
+                    {film.title}
+                </h2>
+                <p className="text-slate-500 font-medium text-sm">
+                    Directed by <span className="text-slate-900">{film.director}</span>
+                </p>
+            </div>
+
             {/* Meta & Actions */}
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 pt-2 border-t border-slate-50">
                 <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-50 border border-slate-100 text-xs font-bold text-slate-600">
                     <Clock size={14} className="text-brand-500" />
                     {displayDuration}
@@ -148,10 +155,13 @@ const FilmDetailModal: React.FC<FilmDetailModalProps> = ({ film, onClose, onVote
                     </div>
                 )}
             </div>
+            
+            {/* Spacer to ensure content isn't hidden behind safe areas on some devices */}
+            <div className="h-4"></div>
         </div>
 
-        {/* Footer Actions */}
-        <div className="p-4 border-t border-slate-100 bg-white z-20">
+        {/* Footer Actions (Fixed at bottom) */}
+        <div className="p-4 border-t border-slate-100 bg-white z-20 flex-shrink-0">
             <button 
               onClick={onVoteClick}
               disabled={hasVoted}
