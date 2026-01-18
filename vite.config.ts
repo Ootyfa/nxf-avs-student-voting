@@ -12,8 +12,15 @@ export default defineConfig(({ mode }) => {
     plugins: [react()],
     define: {
       // Injecting the API Key from environment variables securely
-      // checks API_KEY first, then VITE_API_KEY
-      'process.env.API_KEY': JSON.stringify(env.API_KEY || env.VITE_API_KEY || process.env.API_KEY || ''),
+      // We exhaustively check all common naming conventions including the user's specific VITE_GOOGLE_API_KEY
+      'process.env.API_KEY': JSON.stringify(
+        env.API_KEY || 
+        env.VITE_API_KEY || 
+        env.VITE_GOOGLE_API_KEY || 
+        env.GOOGLE_API_KEY || 
+        process.env.API_KEY || 
+        ''
+      ),
     },
   };
 });

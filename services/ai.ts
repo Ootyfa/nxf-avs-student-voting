@@ -3,9 +3,8 @@ import { GoogleGenAI, Type } from "@google/genai";
 
 // Robust helper to retrieve API Key
 const getApiKey = () => {
-  // 1. Try direct injection from Vite config
-  // Vite replaces 'process.env.API_KEY' with the actual string "YOUR_KEY" at build time.
-  // We use a try-catch because if replacement fails, 'process' is undefined in browser.
+  // 1. Try direct injection from Vite config (process.env.API_KEY)
+  // This is the most reliable method as it is replaced at build time
   try {
     // @ts-ignore
     const key = process.env.API_KEY;
@@ -16,17 +15,19 @@ const getApiKey = () => {
     // Ignore ReferenceError if process is not defined
   }
   
-  // 2. Try standard Vite environment variables (VITE_API_KEY)
+  // 2. Try standard Vite environment variables
+  // We check multiple naming conventions to ensure we catch what the user defined
   try {
     // @ts-ignore
-    if (import.meta.env && import.meta.env.VITE_API_KEY) {
+    if (import.meta.env) {
       // @ts-ignore
-      return import.meta.env.VITE_API_KEY;
-    }
-    // @ts-ignore
-    if (import.meta.env && import.meta.env.API_KEY) {
+      if (import.meta.env.VITE_GOOGLE_API_KEY) return import.meta.env.VITE_GOOGLE_API_KEY;
       // @ts-ignore
-      return import.meta.env.API_KEY;
+      if (import.meta.env.VITE_API_KEY) return import.meta.env.VITE_API_KEY;
+      // @ts-ignore
+      if (import.meta.env.GOOGLE_API_KEY) return import.meta.env.GOOGLE_API_KEY;
+      // @ts-ignore
+      if (import.meta.env.API_KEY) return import.meta.env.API_KEY;
     }
   } catch (e) {}
 
@@ -38,10 +39,10 @@ const ai = apiKey ? new GoogleGenAI({ apiKey }) : null;
 
 // Debug logging (will show in browser console)
 if (ai) {
-  console.log("AI Service: Online");
+  console.log("AI Service: Online (Key Loaded)");
 } else {
   console.warn("AI Service: Offline. (API Key not found)");
-  console.log("Diagnosis: Ensure you have triggered a NEW DEPLOY after adding the key to Netlify.");
+  console.log("Debug: Checked VITE_GOOGLE_API_KEY, VITE_API_KEY, API_KEY. None found.");
 }
 
 export interface ReviewGrade {
@@ -54,11 +55,12 @@ export interface ReviewGrade {
 export const gradeUserReview = async (filmTitle: string, reviewText: string): Promise<ReviewGrade> => {
   // 1. Safety Check: If API key is missing, return fallback immediately
   if (!ai) {
+    console.warn("AI Grading Skipped: API_KEY is missing.");
     return {
         qualityScore: 5,
         pointsAwarded: 10,
         sentiment: 'Neutral',
-        constructiveFeedback: 'AI grading unavailable (System Key Missing). Points awarded for participation.'
+        constructiveFeedback: 'AI features unavailable (Key missing). Points awarded for participation.'
     };
   }
 
@@ -109,12 +111,12 @@ export const gradeUserReview = async (filmTitle: string, reviewText: string): Pr
 
   } catch (error) {
     console.error("AI Grading Error:", error);
-    // Fallback if AI fails (e.g. quota limit or network error)
+    // Fallback if AI fails
     return {
       qualityScore: 5,
       pointsAwarded: 10,
       sentiment: 'Neutral',
-      constructiveFeedback: 'Thanks for your review! (Service temporarily unavailable)'
+      constructiveFeedback: 'Thanks for your review! (AI Offline)'
     };
   }
 };
