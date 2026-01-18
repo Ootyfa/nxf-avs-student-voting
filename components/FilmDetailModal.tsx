@@ -53,7 +53,8 @@ const FilmDetailModal: React.FC<FilmDetailModalProps> = ({ film, onClose, onVote
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-md animate-fade-in">
+    // Updated Z-Index to z-[100] to ensure it covers the Layout BottomNav (which is z-50)
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-md animate-fade-in">
       <div 
         className="bg-white w-full max-w-md rounded-3xl overflow-hidden relative shadow-2xl flex flex-col max-h-[90vh] animate-scale-in"
         onClick={(e) => e.stopPropagation()}
@@ -86,11 +87,8 @@ const FilmDetailModal: React.FC<FilmDetailModalProps> = ({ film, onClose, onVote
         {/* Scrollable Content Body */}
         <div className="flex-grow overflow-y-auto p-6 space-y-6 bg-white no-scrollbar">
             
-            {/* Title & Main Info (Moved here from poster) */}
+            {/* Title & Main Info (Removed Category Badge) */}
             <div>
-                <span className="inline-block px-2.5 py-1 rounded-md bg-brand-50 text-brand-600 text-[10px] font-bold uppercase tracking-wider mb-3">
-                     {film.category || film.genre || 'Documentary'}
-                </span>
                 <h2 className="text-2xl font-black text-slate-900 leading-tight mb-2">
                     {film.title}
                 </h2>
