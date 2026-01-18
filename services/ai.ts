@@ -1,26 +1,34 @@
 
 import { GoogleGenAI, Type } from "@google/genai";
 
-// Robust helper to retrieve API Key from various possible injection points
+// Robust helper to retrieve API Key
 const getApiKey = () => {
-  // 1. Check process.env (Injected by Vite config define)
-  if (typeof process !== 'undefined' && process.env && process.env.API_KEY) {
-    return process.env.API_KEY;
+  // 1. Try direct injection from Vite config
+  // Vite replaces 'process.env.API_KEY' with the actual string "YOUR_KEY" at build time.
+  // We use a try-catch because if replacement fails, 'process' is undefined in browser.
+  try {
+    // @ts-ignore
+    const key = process.env.API_KEY;
+    if (key && typeof key === 'string' && key.length > 5) {
+      return key;
+    }
+  } catch (e) {
+    // Ignore ReferenceError if process is not defined
   }
   
-  // 2. Check import.meta.env (Standard Vite environment variables)
-  // @ts-ignore
-  if (import.meta.env && import.meta.env.VITE_API_KEY) {
+  // 2. Try standard Vite environment variables (VITE_API_KEY)
+  try {
     // @ts-ignore
-    return import.meta.env.VITE_API_KEY;
-  }
-
-  // 3. Fallback check for standard API_KEY in import.meta.env (if configured)
-  // @ts-ignore
-  if (import.meta.env && import.meta.env.API_KEY) {
+    if (import.meta.env && import.meta.env.VITE_API_KEY) {
+      // @ts-ignore
+      return import.meta.env.VITE_API_KEY;
+    }
     // @ts-ignore
-    return import.meta.env.API_KEY;
-  }
+    if (import.meta.env && import.meta.env.API_KEY) {
+      // @ts-ignore
+      return import.meta.env.API_KEY;
+    }
+  } catch (e) {}
 
   return "";
 };
@@ -32,8 +40,8 @@ const ai = apiKey ? new GoogleGenAI({ apiKey }) : null;
 if (ai) {
   console.log("AI Service: Online");
 } else {
-  console.warn("AI Service: Offline. (API Key not found in environment variables)");
-  console.log("Tip: Create a .env file in root with API_KEY=your_key");
+  console.warn("AI Service: Offline. (API Key not found)");
+  console.log("Diagnosis: Ensure you have triggered a NEW DEPLOY after adding the key to Netlify.");
 }
 
 export interface ReviewGrade {
