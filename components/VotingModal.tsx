@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Star, X, Mail, MessageSquare, Sparkles, CheckCircle, ArrowRight, Share2, School, Info } from 'lucide-react';
 import { supabase } from '../services/supabase';
@@ -78,6 +79,16 @@ const VotingModal: React.FC<VotingModalProps> = ({ filmId, filmTitle, onClose, o
     const name = localStorage.getItem('userName') || 'Anonymous';
 
     try {
+        // 1. DUPLICATE CHECK: Verify if this user has already voted for this film in the DB.
+        // This prevents the global counter from incrementing on duplicate/update votes.
+        const { data: existingVote } = await supabase
+            .from('film_votes')
+            .select('id')
+            .eq('film_id', filmId)
+            .eq('user_email', userEmail)
+            .single();
+
+        // 2. Upsert the vote record
         const { error: voteError } = await supabase
             .from('film_votes')
             .upsert({
@@ -89,24 +100,27 @@ const VotingModal: React.FC<VotingModalProps> = ({ filmId, filmTitle, onClose, o
             }, { onConflict: 'film_id, user_email' });
 
         if (voteError) {
-             if (voteError.code === '42P01' || voteError.code === 'PGRST205') {
-                 console.warn("Table film_votes missing or not cached. Detail vote skipped.");
-             } else {
-                 console.error("Error saving vote detail:", JSON.stringify(voteError, null, 2));
-             }
+             console.error("Error saving vote:", voteError.message);
         }
 
-        const { error: rpcError } = await supabase.rpc('increment_vote', { row_id: filmId });
-        if (rpcError) {
-             console.warn("RPC increment_vote failed:", rpcError.message);
-             const { data: film } = await supabase.from('master_films').select('votes_count').eq('id', filmId).single();
-             if (film) {
-                 await supabase.from('master_films').update({ votes_count: (film.votes_count || 0) + 1 }).eq('id', filmId);
+        // 3. ONLY increment global vote count if this was a NEW vote
+        if (!existingVote) {
+             const { error: rpcError } = await supabase.rpc('increment_vote', { row_id: filmId });
+             if (rpcError) {
+                 console.warn("RPC increment_vote failed:", rpcError.message);
+                 // Fallback manual increment (rarely needed)
+                 const { data: film } = await supabase.from('master_films').select('votes_count').eq('id', filmId).single();
+                 if (film) {
+                     await supabase.from('master_films').update({ votes_count: (film.votes_count || 0) + 1 }).eq('id', filmId);
+                 }
              }
+             
+             // Also give points for participation only if new
+             const isLinked = await registerUserVote(userEmail, name, 10); 
+             setLinkedUniversity(isLinked);
+        } else {
+            console.log("Existing vote detected. Updated rating but skipped global count increment.");
         }
-        
-        const isLinked = await registerUserVote(userEmail, name, 10); 
-        setLinkedUniversity(isLinked);
         
     } catch (e) {
         console.error("Vote submission critical error:", e);

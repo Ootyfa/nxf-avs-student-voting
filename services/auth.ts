@@ -73,6 +73,28 @@ export const registerNewUser = async (email: string, name: string, universityId?
   }
 };
 
+// NEW: Fetch all film IDs a user has voted for to restore session
+export const fetchUserVoteHistory = async (email: string): Promise<string[]> => {
+  try {
+    const { data, error } = await supabase
+      .from('film_votes')
+      .select('film_id')
+      .eq('user_email', email);
+
+    if (error) {
+      console.error("Error fetching vote history:", error);
+      return [];
+    }
+    
+    const ids = data.map((v: any) => v.film_id);
+    console.log(`Restored ${ids.length} votes for ${email}`);
+    return ids;
+  } catch (e) {
+    console.error("Exception fetching votes:", e);
+    return [];
+  }
+};
+
 // Retrieve user data from DB and update local storage (Source of Truth)
 export const syncUserProfile = async (email: string) => {
   try {
@@ -83,7 +105,7 @@ export const syncUserProfile = async (email: string) => {
       .single();
 
     if (data && !error) {
-      console.log("Existing user found, syncing...", data);
+      console.log("Existing user found, syncing profile...", data);
       
       // Restore Points
       localStorage.setItem('userPoints', (data.points || 0).toString());

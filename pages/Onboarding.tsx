@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Film, User, ChevronRight, Check, School, Mail, Loader2, Play, Plus, MapPin, ArrowLeft } from 'lucide-react';
-import { getUniversities, registerNewUser, addNewUniversity } from '../services/auth';
+import { getUniversities, registerNewUser, addNewUniversity, syncUserProfile, fetchUserVoteHistory } from '../services/auth';
 import { University } from '../types';
 
 const OnboardingPage: React.FC = () => {
@@ -50,7 +50,22 @@ const OnboardingPage: React.FC = () => {
     }
     
     // 2. Save to Supabase (Cloud Persistence)
+    // This upserts the user, ensuring they exist in the DB
     await registerNewUser(email.trim(), name.trim(), selectedUni?.id);
+
+    // 3. CRITICAL: Sync previous data (Votes & Points) from Supabase
+    // This handles the "Clear Cookies -> Re-enter Email" scenario
+    console.log("Restoring session for returning user...");
+    await syncUserProfile(email.trim()); // Restores points & university if they differ
+    
+    const previousVotes = await fetchUserVoteHistory(email.trim());
+    if (previousVotes.length > 0) {
+        // Update local storage so the UI knows which films are already voted
+        // We merge with existing just in case, though usually it's empty after clear
+        const existing = JSON.parse(localStorage.getItem('votedFilms') || '[]');
+        const merged = Array.from(new Set([...existing, ...previousVotes]));
+        localStorage.setItem('votedFilms', JSON.stringify(merged));
+    }
     
     setIsSubmitting(false);
     navigate('/');
