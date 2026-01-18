@@ -66,6 +66,15 @@ export interface Festival {
   is_active: boolean;
 }
 
+// Junction Table Interface
+export interface FestivalFilm {
+  id: string;
+  festival_id: string;
+  film_id: string;
+  sequence_order: number;
+  master_films?: Film; // For joined queries
+}
+
 export interface FestivalSection {
   id: string;
   festivalId: string;

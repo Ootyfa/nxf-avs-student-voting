@@ -1,10 +1,9 @@
 
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { User, ChevronRight, Check, School, Mail, Loader2 } from 'lucide-react';
+import { Film, User, ChevronRight, Check, School, Mail, Loader2, Play } from 'lucide-react';
 import { getUniversities, registerNewUser } from '../services/auth';
 import { University } from '../types';
-import BrandLogo from '../components/BrandLogo';
 
 const OnboardingPage: React.FC = () => {
   const navigate = useNavigate();
@@ -65,15 +64,34 @@ const OnboardingPage: React.FC = () => {
       case 0:
         return (
           <div className="flex flex-col items-center text-center space-y-6 animate-fade-in w-full max-w-xs mx-auto">
-            {/* Custom Logo Wrapper with Glow Effects */}
+            {/* Custom Logo: Red Film Strip with Checkmark on Yellow Background */}
             <div className="relative w-36 h-36 flex items-center justify-center mb-4">
                {/* Background Blobs */}
                <div className="absolute inset-0 bg-accent-400 rounded-[2.5rem] rotate-6 opacity-20 animate-pulse"></div>
                <div className="absolute inset-0 bg-red-400 rounded-[2.5rem] -rotate-6 opacity-20 animate-pulse delay-75"></div>
                
-               {/* Reusable Logo Component */}
-               <div className="relative z-10 shadow-xl rounded-[2rem]">
-                  <BrandLogo size="xl" />
+               {/* Main Logo Container (Yellow Rounded Square) */}
+               <div className="relative z-10 bg-[#FFD100] w-28 h-28 rounded-[2rem] shadow-xl flex items-center justify-center border-4 border-white overflow-hidden">
+                  
+                  {/* Red Film Strip Block */}
+                  <div className="w-20 h-16 bg-[#E31E24] rounded-lg relative flex items-center justify-center shadow-inner">
+                      
+                      {/* Film Perforations (Top) */}
+                      <div className="absolute -top-1 left-0 right-0 flex justify-center gap-1.5">
+                          {[1,2,3,4,5,6].map(i => <div key={`t-${i}`} className="w-1.5 h-2 bg-[#FFD100] rounded-b-sm"></div>)}
+                      </div>
+                      
+                      {/* Film Perforations (Bottom) */}
+                      <div className="absolute -bottom-1 left-0 right-0 flex justify-center gap-1.5">
+                          {[1,2,3,4,5,6].map(i => <div key={`b-${i}`} className="w-1.5 h-2 bg-[#FFD100] rounded-t-sm"></div>)}
+                      </div>
+
+                      {/* White Checkmark */}
+                      <Check className="text-white drop-shadow-md" size={40} strokeWidth={4} />
+                      
+                      {/* Vertical Strip Line (Decorative) */}
+                      <div className="absolute left-3 top-2 bottom-2 w-1 border-r-2 border-dashed border-white/30"></div>
+                  </div>
                </div>
             </div>
 
@@ -113,7 +131,7 @@ const OnboardingPage: React.FC = () => {
                  />
                </div>
 
-               {/* Email Input */}
+               {/* Email Input - Added for Supabase Storage */}
                <div className="space-y-1.5">
                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider ml-1">Email Address <span className="text-red-500">*</span></label>
                  <div className="relative">
@@ -208,7 +226,7 @@ const OnboardingPage: React.FC = () => {
     // Uses 100dvh (Dynamic Viewport Height) to ensure it fits perfectly on mobile browsers
     <div className="h-[100dvh] bg-white flex flex-col p-6 pb-safe max-w-md mx-auto relative overflow-hidden">
       
-      {/* Decorative background blur (Red/Yellow) */}
+      {/* Decorative background blur (Updated to Red/Yellow) */}
       <div className="absolute top-[-20%] left-[-20%] w-[150%] h-[50%] bg-brand-50/80 blur-3xl rounded-full -z-10 pointer-events-none"></div>
 
       {/* Header */}

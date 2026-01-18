@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Star, X, Mail, MessageSquare, Sparkles, CheckCircle, ArrowRight, Share2, School, Info } from 'lucide-react';
 import { supabase } from '../services/supabase';
@@ -48,7 +49,6 @@ const VotingModal: React.FC<VotingModalProps> = ({ filmId, filmTitle, onClose, o
     if (values.some((v: number) => v === 0)) return;
 
     // Calculate Average (Rounded)
-    // Explicitly typing accumulator and current value to avoid type errors
     const sum = values.reduce((acc: number, curr: number) => acc + curr, 0);
     const average = Math.round(sum / values.length);
     setRating(average);
@@ -79,11 +79,6 @@ const VotingModal: React.FC<VotingModalProps> = ({ filmId, filmTitle, onClose, o
     const name = localStorage.getItem('userName') || 'Anonymous';
 
     try {
-        // A. Record the detailed vote in 'film_votes' table
-        // We use upsert so if they vote again, it updates
-        // Note: Currently schema only has 'rating', so we store the average. 
-        // We could store detailed breakdown in review_text or a new column if schema allowed, 
-        // but sticking to average for now to maintain schema compatibility.
         const { error: voteError } = await supabase
             .from('film_votes')
             .upsert({
@@ -95,8 +90,6 @@ const VotingModal: React.FC<VotingModalProps> = ({ filmId, filmTitle, onClose, o
             }, { onConflict: 'film_id, user_email' });
 
         if (voteError) {
-             // Handle PostgREST schema cache error (PGRST205) and Postgres missing table (42P01)
-             // This prevents the UI from thinking it failed when it's just a backend sync issue
              if (voteError.code === '42P01' || voteError.code === 'PGRST205') {
                  console.warn("Table film_votes missing or not cached. Detail vote skipped.");
              } else {
@@ -104,10 +97,8 @@ const VotingModal: React.FC<VotingModalProps> = ({ filmId, filmTitle, onClose, o
              }
         }
 
-        // B. Increment the aggregate counter on the film
         const { error: rpcError } = await supabase.rpc('increment_vote', { row_id: filmId });
         if (rpcError) {
-             // Fallback to direct update if RPC is missing
              console.warn("RPC increment_vote failed:", rpcError.message);
              const { data: film } = await supabase.from('master_films').select('votes_count').eq('id', filmId).single();
              if (film) {
@@ -115,7 +106,6 @@ const VotingModal: React.FC<VotingModalProps> = ({ filmId, filmTitle, onClose, o
              }
         }
         
-        // C. Register user profile and link to university (10 points for voting)
         const isLinked = await registerUserVote(userEmail, name, 10); 
         setLinkedUniversity(isLinked);
         
@@ -137,8 +127,6 @@ const VotingModal: React.FC<VotingModalProps> = ({ filmId, filmTitle, onClose, o
     
     if (storedEmail) {
         try {
-            // Include category breakdown in the review text for admin visibility if needed
-            // (Optional enhancement, but helpful)
             const breakdownText = `[Ratings: Story=${categoryRatings.story}, Auth=${categoryRatings.authenticity}, Craft=${categoryRatings.craft}, Impact=${categoryRatings.impact}] \n\n`;
             const fullReviewText = breakdownText + review;
 
@@ -148,10 +136,10 @@ const VotingModal: React.FC<VotingModalProps> = ({ filmId, filmTitle, onClose, o
                     film_id: filmId,
                     user_email: storedEmail,
                     user_name: name,
-                    rating: rating, // Ensure we include the rating from state
+                    rating: rating,
                     review_text: fullReviewText,
                     ai_score: grade.pointsAwarded,
-                    created_at: new Date().toISOString() // Update timestamp
+                    created_at: new Date().toISOString()
                 }, { onConflict: 'film_id, user_email' });
 
             if (error) {
@@ -169,14 +157,14 @@ const VotingModal: React.FC<VotingModalProps> = ({ filmId, filmTitle, onClose, o
     setAiFeedback(grade.constructiveFeedback);
     setStep('SUCCESS');
     setTimeout(() => {
-        onVoteComplete(); // Notify parent
+        onVoteComplete(); 
     }, 5000); 
   };
 
   const handleSkipReview = () => {
     setStep('SUCCESS');
     setTimeout(() => {
-        onVoteComplete(); // Notify parent even if review skipped
+        onVoteComplete();
     }, 2500);
   };
 
@@ -192,13 +180,12 @@ const VotingModal: React.FC<VotingModalProps> = ({ filmId, filmTitle, onClose, o
      }
   };
 
-  // Helper to check if rating is complete
   const isRatingComplete = Object.values(categoryRatings).every((v: number) => v > 0);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-sm animate-fade-in">
-      <div className="bg-white w-full max-w-sm rounded-3xl shadow-2xl overflow-hidden relative max-h-[90vh] overflow-y-auto no-scrollbar">
-        <button onClick={onClose} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 z-10">
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-sm animate-fade-in">
+      <div className="bg-white w-full max-w-sm rounded-3xl shadow-2xl overflow-hidden relative max-h-[90vh] overflow-y-auto no-scrollbar animate-scale-in">
+        <button onClick={onClose} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 z-10 active:scale-95 transition-transform">
           <X size={24} />
         </button>
 

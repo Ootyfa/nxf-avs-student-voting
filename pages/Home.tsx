@@ -1,19 +1,20 @@
 
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { PlayCircle, Trophy, Star, Users, BarChart3, MapPin, Calendar, AlertCircle } from 'lucide-react';
+import { PlayCircle, Trophy, Star, Users, BarChart3, MapPin, Calendar, AlertCircle, ChevronDown } from 'lucide-react';
 import { supabase } from '../services/supabase';
 import { Film, University, Festival } from '../types';
-import BrandLogo from '../components/BrandLogo';
 
 const HomePage: React.FC = () => {
   const navigate = useNavigate();
-  const [featuredFilms, setFeaturedFilms] = useState<Film[]>([]);
+  const [festivalFilms, setFestivalFilms] = useState<Film[]>([]);
   const [topUniversities, setTopUniversities] = useState<University[]>([]);
   const [avatarUrl, setAvatarUrl] = useState('');
   
   // Dynamic Data States
-  const [activeFestival, setActiveFestival] = useState<Festival | null>(null);
+  const [activeFestivals, setActiveFestivals] = useState<Festival[]>([]);
+  const [selectedFestivalIndex, setSelectedFestivalIndex] = useState(0);
+  
   const [totalVotes, setTotalVotes] = useState(0);
   const [totalStudents, setTotalStudents] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -26,44 +27,36 @@ const HomePage: React.FC = () => {
     const fetchData = async () => {
         setLoading(true);
         try {
-            // 1. Fetch Active Festival
-            const { data: festivalData } = await supabase
+            // 1. Fetch ALL Active Festivals
+            const { data: festivalsData } = await supabase
               .from('festivals')
               .select('*')
               .eq('is_active', true)
-              .single();
+              .order('start_date', { ascending: false }); // Show newest first
             
-            if (festivalData) {
-                setActiveFestival(festivalData as Festival);
+            if (festivalsData && festivalsData.length > 0) {
+                const fests = festivalsData as Festival[];
+                setActiveFestivals(fests);
+                fetchFestivalFilms(fests[0].id); // Load films for the first one by default
+            } else {
+                 // No active festival, fallback
+                 const { data: films } = await supabase
+                    .from('master_films')
+                    .select('*')
+                    .limit(5)
+                    .order('votes_count', { ascending: false });
+                 if (films) setFestivalFilms(films as Film[]);
             }
 
             // 2. Fetch Real-time Stats
-            const { count: votesCount } = await supabase
-              .from('film_votes')
-              .select('*', { count: 'exact', head: true });
+            const { count: votesCount } = await supabase.from('film_votes').select('*', { count: 'exact', head: true });
             if (votesCount !== null) setTotalVotes(votesCount);
 
-            const { count: studentsCount } = await supabase
-              .from('user_profiles')
-              .select('*', { count: 'exact', head: true });
+            const { count: studentsCount } = await supabase.from('user_profiles').select('*', { count: 'exact', head: true });
             if (studentsCount !== null) setTotalStudents(studentsCount);
 
-            // 3. Fetch Trending Films
-            const { data: films } = await supabase
-              .from('master_films')
-              .select('*')
-              .limit(5)
-              .order('votes_count', { ascending: false });
-            
-            if (films) setFeaturedFilms(films as Film[]);
-
-            // 4. Fetch Leaderboard Preview
-            const { data: unis } = await supabase
-              .from('universities')
-              .select('*')
-              .limit(3)
-              .order('points', { ascending: false });
-            
+            // 3. Fetch Leaderboard Preview
+            const { data: unis } = await supabase.from('universities').select('*').limit(3).order('points', { ascending: false });
             if (unis) setTopUniversities(unis as University[]);
 
         } catch (e) {
@@ -74,6 +67,29 @@ const HomePage: React.FC = () => {
     };
     fetchData();
   }, []);
+
+  const fetchFestivalFilms = async (festivalId: string) => {
+      const { data: festivalFilmsData } = await supabase
+        .from('festival_films')
+        .select('film_id, master_films(*)')
+        .eq('festival_id', festivalId)
+        .order('sequence_order', { ascending: true });
+    
+      if (festivalFilmsData && festivalFilmsData.length > 0) {
+        const mappedFilms = festivalFilmsData.map((item: any) => item.master_films) as Film[];
+        setFestivalFilms(mappedFilms);
+      } else {
+        setFestivalFilms([]);
+      }
+  };
+
+  const handleFestivalChange = (index: number) => {
+      setSelectedFestivalIndex(index);
+      const fest = activeFestivals[index];
+      if (fest) fetchFestivalFilms(fest.id);
+  };
+
+  const activeFestival = activeFestivals[selectedFestivalIndex];
 
   const formatRating = (val: any) => {
     const num = Number(val);
@@ -90,14 +106,11 @@ const HomePage: React.FC = () => {
     <div className="bg-slate-50 min-h-screen pb-24">
       
       {/* 1. Header Section */}
-      <div className="bg-white px-6 pt-12 pb-4 border-b border-slate-100 sticky top-0 z-40">
+      <div className="bg-white px-6 pt-12 pb-4 border-b border-slate-100 sticky top-0 z-40 shadow-sm">
         <div className="flex justify-between items-center">
-          <div className="flex items-center gap-3">
-            <BrandLogo size="sm" />
-            <div>
-               <h1 className="text-lg font-black text-slate-900 tracking-tight leading-none">NXF AVS</h1>
-               <p className="text-[10px] text-brand-600 font-bold tracking-wide uppercase">Advance Voting System</p>
-            </div>
+          <div>
+            <h1 className="text-xl font-black text-slate-900 tracking-tight">NXF AVS</h1>
+            <p className="text-xs text-brand-600 font-bold tracking-wide uppercase">Advance Voting System</p>
           </div>
           <button 
             onClick={() => navigate('/profile')}
@@ -106,13 +119,31 @@ const HomePage: React.FC = () => {
             <img src={avatarUrl} alt="Profile" className="w-full h-full object-cover" />
           </button>
         </div>
+
+        {/* Festival Switcher (Only if > 1 active festival) */}
+        {activeFestivals.length > 1 && (
+            <div className="mt-4 flex gap-2 overflow-x-auto no-scrollbar pb-1">
+                {activeFestivals.map((fest, idx) => (
+                    <button
+                        key={fest.id}
+                        onClick={() => handleFestivalChange(idx)}
+                        className={`px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all border ${
+                            selectedFestivalIndex === idx
+                            ? 'bg-slate-900 text-white border-slate-900 shadow-md'
+                            : 'bg-slate-50 text-slate-500 border-slate-200'
+                        }`}
+                    >
+                        {fest.name}
+                    </button>
+                ))}
+            </div>
+        )}
       </div>
 
       <div className="p-6 space-y-8">
         
         {/* 2. Hero Banner (Dynamic Festival) */}
         <div className="relative overflow-hidden rounded-3xl bg-white border border-slate-200 shadow-sm p-6 min-h-[220px] flex flex-col justify-center">
-           {/* Background Decor */}
            <div className="absolute top-0 right-0 w-40 h-40 bg-brand-50 rounded-full blur-3xl -mr-16 -mt-10"></div>
            
            <div className="relative z-10">
@@ -229,18 +260,21 @@ const HomePage: React.FC = () => {
             </div>
         </div>
 
-        {/* 5. Featured Films Carousel */}
+        {/* 5. Festival Program (Featured) */}
         <div>
           <div className="flex justify-between items-end mb-4 px-1">
-            <h3 className="font-bold text-slate-900 text-lg">Trending Films</h3>
-            <button onClick={() => navigate('/films')} className="text-brand-600 text-xs font-bold">See All</button>
+            <div>
+                <h3 className="font-bold text-slate-900 text-lg">Festival Program</h3>
+                <p className="text-[10px] text-brand-600 font-bold uppercase">Curated Selection</p>
+            </div>
+            <button onClick={() => navigate('/films')} className="text-brand-600 text-xs font-bold">All Films</button>
           </div>
           
           <div className="flex overflow-x-auto gap-4 pb-4 -mx-6 px-6 no-scrollbar snap-x snap-mandatory">
-            {featuredFilms.length > 0 ? featuredFilms.map((film) => (
+            {festivalFilms.length > 0 ? festivalFilms.map((film) => (
               <div 
                 key={film.id}
-                onClick={() => navigate('/films')}
+                onClick={() => navigate('/films')} // In real app, maybe navigate to detail view directly
                 className="snap-center flex-shrink-0 w-[150px] group cursor-pointer"
               >
                 <div className="relative aspect-[2/3] rounded-2xl overflow-hidden mb-3 shadow-sm bg-slate-100 border border-slate-100">
@@ -250,6 +284,9 @@ const HomePage: React.FC = () => {
                     alt={film.title}
                     onError={(e) => (e.target as HTMLImageElement).src = 'https://placehold.co/300x450/e2e8f0/64748b?text=No+Img'}
                   />
+                  <div className="absolute top-2 right-2 bg-brand-500 text-white px-2 py-0.5 rounded-md text-[10px] font-bold shadow-sm">
+                      Vote
+                  </div>
                   <div className="absolute bottom-2 left-2 bg-white/90 backdrop-blur-md px-2 py-1 rounded-lg flex items-center gap-1 shadow-sm">
                     <Star size={10} className="text-yellow-400 fill-current" />
                     <span className="text-slate-900 text-[10px] font-bold">{formatRating(film.rating)}</span>
@@ -260,7 +297,7 @@ const HomePage: React.FC = () => {
               </div>
             )) : (
               <div className="w-full p-4 text-center text-slate-400 text-sm bg-white rounded-xl border border-slate-100 border-dashed">
-                  Loading films...
+                  No films assigned to {activeFestival?.name || 'current festival'}.
               </div>
             )}
           </div>

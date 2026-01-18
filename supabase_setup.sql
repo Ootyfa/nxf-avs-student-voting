@@ -1,7 +1,13 @@
+
 -- ==========================================
--- 0. Cleanup & Permissions
+-- 0. Cleanup (Optional: Reset Policies)
 -- ==========================================
-GRANT USAGE ON SCHEMA public TO anon, authenticated;
+-- Run this to clear old policies if you are facing conflicts, 
+-- otherwise you can skip to Table Creation.
+DROP POLICY IF EXISTS "Enable read access for all users" ON public.user_profiles;
+DROP POLICY IF EXISTS "Enable insert for all users" ON public.user_profiles;
+DROP POLICY IF EXISTS "Enable update for all users" ON public.user_profiles;
+-- (Repeat drop for other tables if necessary for clean slate)
 
 -- ==========================================
 -- 1. Create Universities/Colleges Table
@@ -66,7 +72,7 @@ create table if not exists public.film_votes (
 );
 
 -- ==========================================
--- 5. Create Festivals Table (NEW)
+-- 5. Create Festivals Table
 -- ==========================================
 create table if not exists public.festivals (
   id uuid default gen_random_uuid() primary key,
@@ -79,67 +85,74 @@ create table if not exists public.festivals (
   created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 
--- Insert Default Festival Data
-INSERT INTO public.festivals (name, location, start_date, end_date, status, is_active)
-SELECT 'ATOM Documentary Festival', 'Ooty, India', NOW(), NOW() + interval '10 days', 'Live', true
-WHERE NOT EXISTS (SELECT 1 FROM public.festivals);
+-- ==========================================
+-- 6. Create Festival Films (Junction Table)
+-- ==========================================
+create table if not exists public.festival_films (
+  id uuid default gen_random_uuid() primary key,
+  festival_id uuid references public.festivals(id) not null,
+  film_id uuid references public.master_films(id) not null,
+  sequence_order integer default 0,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null,
+  unique(festival_id, film_id)
+);
 
 -- ==========================================
--- 6. Enable Row Level Security (RLS)
+-- 7. Create Film Questions Table (New)
+-- ==========================================
+create table if not exists public.film_questions (
+  id uuid default gen_random_uuid() primary key,
+  film_id uuid references public.master_films(id),
+  user_name text,
+  user_email text,
+  question text,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
+-- ==========================================
+-- 8. Enable Row Level Security (RLS)
 -- ==========================================
 alter table public.universities enable row level security;
 alter table public.user_profiles enable row level security;
 alter table public.master_films enable row level security;
 alter table public.film_votes enable row level security;
 alter table public.festivals enable row level security;
+alter table public.festival_films enable row level security;
+alter table public.film_questions enable row level security;
 
 -- ==========================================
--- 7. Define Policies
+-- 9. Define PERMISSIVE Policies (Fixes Errors)
 -- ==========================================
 
--- Universities
-drop policy if exists "Allow public read access on universities" on public.universities;
-create policy "Allow public read access on universities" on public.universities for select using (true);
+-- User Profiles: Allow Public Read/Insert/Update
+create policy "Public Profiles Access" on public.user_profiles for select using (true);
+create policy "Public Profiles Insert" on public.user_profiles for insert with check (true);
+create policy "Public Profiles Update" on public.user_profiles for update using (true);
 
--- Master Films
-drop policy if exists "Allow public read access on master_films" on public.master_films;
-create policy "Allow public read access on master_films" on public.master_films for select using (true);
+-- Film Votes: Allow Public Read/Insert/Update
+create policy "Public Votes Access" on public.film_votes for select using (true);
+create policy "Public Votes Insert" on public.film_votes for insert with check (true);
+create policy "Public Votes Update" on public.film_votes for update using (true);
 
--- User Profiles
-drop policy if exists "Allow public read access on user_profiles" on public.user_profiles;
-drop policy if exists "Allow public insert on user_profiles" on public.user_profiles;
-drop policy if exists "Allow public update on user_profiles" on public.user_profiles;
+-- Film Questions: Allow Public Read/Insert
+create policy "Public Questions Access" on public.film_questions for select using (true);
+create policy "Public Questions Insert" on public.film_questions for insert with check (true);
 
-create policy "Allow public read access on user_profiles" on public.user_profiles for select using (true);
-create policy "Allow public insert on user_profiles" on public.user_profiles for insert with check (true);
-create policy "Allow public update on user_profiles" on public.user_profiles for update using (true);
+-- Master Data (Films, Universities, Festivals): Read Only (mostly)
+create policy "Public Read Master" on public.master_films for select using (true);
+create policy "Public Update Master" on public.master_films for update using (true); -- needed for vote count increment
 
--- Film Votes
-drop policy if exists "Allow public read access on film_votes" on public.film_votes;
-drop policy if exists "Allow public insert on film_votes" on public.film_votes;
-drop policy if exists "Allow public update on film_votes" on public.film_votes;
+create policy "Public Read Unis" on public.universities for select using (true);
+create policy "Public Update Unis" on public.universities for update using (true); -- needed for point increment
 
-create policy "Allow public read access on film_votes" on public.film_votes for select using (true);
-create policy "Allow public insert on film_votes" on public.film_votes for insert with check (true);
-create policy "Allow public update on film_votes" on public.film_votes for update using (true);
-
--- Festivals (NEW)
-drop policy if exists "Allow public read access on festivals" on public.festivals;
-create policy "Allow public read access on festivals" on public.festivals for select using (true);
+create policy "Public Read Festivals" on public.festivals for select using (true);
+create policy "Public Read FestivalFilms" on public.festival_films for select using (true);
 
 -- ==========================================
--- 8. Grant Permissions
--- ==========================================
-GRANT ALL ON TABLE public.universities TO anon, authenticated;
-GRANT ALL ON TABLE public.user_profiles TO anon, authenticated;
-GRANT ALL ON TABLE public.master_films TO anon, authenticated;
-GRANT ALL ON TABLE public.film_votes TO anon, authenticated;
-GRANT ALL ON TABLE public.festivals TO anon, authenticated;
-
--- ==========================================
--- 9. RPC Functions
+-- 10. RPC Functions
 -- ==========================================
 
+-- Function to increment university points safely
 create or replace function increment_university_points(uni_id uuid, points_to_add int)
 returns void
 language plpgsql
@@ -154,6 +167,7 @@ begin
 end;
 $$;
 
+-- Function to increment film vote count safely
 create or replace function increment_vote(row_id uuid)
 returns void
 language plpgsql
@@ -166,4 +180,11 @@ begin
 end;
 $$;
 
-NOTIFY pgrst, 'reload config';
+-- ==========================================
+-- 11. Initial Seed (Run only if empty)
+-- ==========================================
+INSERT INTO public.festivals (name, location, start_date, end_date, status, is_active)
+SELECT 'ATOM Student Awards 2024', 'Online', NOW(), NOW() + interval '30 days', 'Live', true
+WHERE NOT EXISTS (SELECT 1 FROM public.festivals);
+
+GRANT ALL ON ALL TABLES IN SCHEMA public TO anon, authenticated, service_role;

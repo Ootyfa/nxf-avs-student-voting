@@ -1,4 +1,5 @@
-import { Film, FilmStatus, Festival, FestivalSection, User, UserRole, AchievementTitle, Review } from '../types';
+
+import { Film, FilmStatus, Festival, FestivalSection, User, UserRole, AchievementTitle, Review, University } from '../types';
 
 // Mock Films updated to match Supabase schema with reliable image placeholders
 export const MOCK_FILMS: Film[] = [
@@ -89,7 +90,56 @@ export const MOCK_USERS: User[] = [
   }
 ];
 
-// Cleared mock universities as requested
-export const MOCK_UNIVERSITIES = [];
+// Restored Indian Institutes for robust onboarding
+export const MOCK_UNIVERSITIES: University[] = [
+  {
+    id: 'u1',
+    name: 'Film and Television Institute of India (FTII)',
+    logo: '🎥',
+    location: 'Pune',
+    active_students: 142,
+    points: 12500
+  },
+  {
+    id: 'u2',
+    name: 'Satyajit Ray Film & TV Institute (SRFTI)',
+    logo: '🎬',
+    location: 'Kolkata',
+    active_students: 98,
+    points: 9800
+  },
+  {
+    id: 'u3',
+    name: 'National Institute of Design (NID)',
+    logo: '🎨',
+    location: 'Ahmedabad',
+    active_students: 215,
+    points: 15400
+  },
+  {
+    id: 'u4',
+    name: 'Whistling Woods International',
+    logo: '🎭',
+    location: 'Mumbai',
+    active_students: 180,
+    points: 11200
+  },
+  {
+    id: 'u5',
+    name: 'A.J.K. Mass Communication Research Centre',
+    logo: '📡',
+    location: 'New Delhi',
+    active_students: 85,
+    points: 7600
+  },
+  {
+    id: 'u6',
+    name: 'Srishti Manipal Institute of Art, Design',
+    logo: '🖌️',
+    location: 'Bengaluru',
+    active_students: 110,
+    points: 8900
+  }
+];
 
 export const MOCK_REVIEWS: Review[] = [];
