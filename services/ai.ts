@@ -1,16 +1,39 @@
 
 import { GoogleGenAI, Type } from "@google/genai";
 
-// Initialize AI Client securely
-// We check if the key exists to prevent crashing the app if .env is missing
-// We also trim() the key to ensure no accidental spaces from copy-pasting break the client
-const apiKey = (process.env.API_KEY || "").trim();
+// Robust helper to retrieve API Key from various possible injection points
+const getApiKey = () => {
+  // 1. Check process.env (Injected by Vite config define)
+  if (typeof process !== 'undefined' && process.env && process.env.API_KEY) {
+    return process.env.API_KEY;
+  }
+  
+  // 2. Check import.meta.env (Standard Vite environment variables)
+  // @ts-ignore
+  if (import.meta.env && import.meta.env.VITE_API_KEY) {
+    // @ts-ignore
+    return import.meta.env.VITE_API_KEY;
+  }
+
+  // 3. Fallback check for standard API_KEY in import.meta.env (if configured)
+  // @ts-ignore
+  if (import.meta.env && import.meta.env.API_KEY) {
+    // @ts-ignore
+    return import.meta.env.API_KEY;
+  }
+
+  return "";
+};
+
+const apiKey = getApiKey().trim();
 const ai = apiKey ? new GoogleGenAI({ apiKey }) : null;
 
+// Debug logging (will show in browser console)
 if (ai) {
-  console.log("AI Service: Online (Key Loaded)");
+  console.log("AI Service: Online");
 } else {
-  console.log("AI Service: Offline (Key Missing)");
+  console.warn("AI Service: Offline. (API Key not found in environment variables)");
+  console.log("Tip: Create a .env file in root with API_KEY=your_key");
 }
 
 export interface ReviewGrade {
@@ -23,12 +46,11 @@ export interface ReviewGrade {
 export const gradeUserReview = async (filmTitle: string, reviewText: string): Promise<ReviewGrade> => {
   // 1. Safety Check: If API key is missing, return fallback immediately
   if (!ai) {
-    console.warn("AI Grading Skipped: API_KEY is missing.");
     return {
         qualityScore: 5,
         pointsAwarded: 10,
         sentiment: 'Neutral',
-        constructiveFeedback: 'AI features unavailable (Key missing). Points awarded for participation.'
+        constructiveFeedback: 'AI grading unavailable (System Key Missing). Points awarded for participation.'
     };
   }
 
@@ -79,12 +101,12 @@ export const gradeUserReview = async (filmTitle: string, reviewText: string): Pr
 
   } catch (error) {
     console.error("AI Grading Error:", error);
-    // Fallback if AI fails
+    // Fallback if AI fails (e.g. quota limit or network error)
     return {
       qualityScore: 5,
       pointsAwarded: 10,
       sentiment: 'Neutral',
-      constructiveFeedback: 'Thanks for your review! (AI Offline)'
+      constructiveFeedback: 'Thanks for your review! (Service temporarily unavailable)'
     };
   }
 };

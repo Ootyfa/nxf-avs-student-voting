@@ -1,3 +1,4 @@
+
 import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 
@@ -11,8 +12,8 @@ export default defineConfig(({ mode }) => {
     plugins: [react()],
     define: {
       // Injecting the API Key from environment variables securely
-      // Ensure you have a .env file with API_KEY=... or set it in Netlify
-      'process.env.API_KEY': JSON.stringify(env.API_KEY || process.env.API_KEY || ''),
+      // checks API_KEY first, then VITE_API_KEY
+      'process.env.API_KEY': JSON.stringify(env.API_KEY || env.VITE_API_KEY || process.env.API_KEY || ''),
     },
   };
 });
