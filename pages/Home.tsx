@@ -284,9 +284,7 @@ const HomePage: React.FC = () => {
                     alt={film.title}
                     onError={(e) => (e.target as HTMLImageElement).src = 'https://placehold.co/300x450/e2e8f0/64748b?text=No+Img'}
                   />
-                  <div className="absolute top-2 right-2 bg-brand-500 text-white px-2 py-0.5 rounded-md text-[10px] font-bold shadow-sm">
-                      Vote
-                  </div>
+                  {/* Removed "Vote" badge for cleaner design */}
                   <div className="absolute bottom-2 left-2 bg-white/90 backdrop-blur-md px-2 py-1 rounded-lg flex items-center gap-1 shadow-sm">
                     <Star size={10} className="text-yellow-400 fill-current" />
                     <span className="text-slate-900 text-[10px] font-bold">{formatRating(film.rating)}</span>

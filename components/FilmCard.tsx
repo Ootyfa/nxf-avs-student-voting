@@ -23,7 +23,6 @@ const FilmCard: React.FC<FilmCardProps> = ({ film, sectionName, showVoteBtn = tr
 
   // Normalize Data
   const displayImage = film.poster_url || film.image_url || 'https://placehold.co/300x450/f1f5f9/94a3b8?text=No+Img';
-  const displayGenre = film.category || film.genre || 'Documentary';
   const displayDuration = film.duration || (film.duration_minutes ? `${film.duration_minutes} min` : 'N/A');
 
   useEffect(() => {
@@ -125,14 +124,7 @@ const FilmCard: React.FC<FilmCardProps> = ({ film, sectionName, showVoteBtn = tr
         {/* Content */}
         <div className="flex-grow flex flex-col">
           <div className="mb-3">
-            {sectionName && (
-               <div className="inline-block px-1.5 py-0.5 rounded bg-slate-100 text-slate-500 text-[9px] font-bold uppercase tracking-wider mb-1">
-                   {sectionName}
-               </div>
-            )}
-            <span className="text-[10px] uppercase font-bold text-brand-600 tracking-wider mb-0.5 block">
-              {displayGenre}
-            </span>
+            {/* Removed Section Name and Genre for cleaner design as requested */}
             <h3 className="font-bold text-slate-900 text-sm leading-snug line-clamp-2">{film.title}</h3>
             <p className="text-xs text-slate-500 mt-0.5 line-clamp-1">{film.director}</p>
           </div>
