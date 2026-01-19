@@ -150,10 +150,10 @@ create policy "Public Read Festivals" on public.festivals for select using (true
 create policy "Public Read FestivalFilms" on public.festival_films for select using (true);
 
 -- ==========================================
--- 10. RPC Functions
+-- 10. RPC Functions (CORRECTED)
 -- ==========================================
 
--- Function to increment university points safely
+-- FIXED: This function now ONLY increments points, NOT students.
 create or replace function increment_university_points(uni_id uuid, points_to_add int)
 returns void
 language plpgsql
@@ -161,9 +161,20 @@ security definer
 as $$
 begin
   update public.universities
-  set 
-    points = points + points_to_add,
-    active_students = active_students + 1
+  set points = points + points_to_add
+  where id = uni_id;
+end;
+$$;
+
+-- NEW: Function to specifically increment student count (optional usage)
+create or replace function increment_student_count(uni_id uuid)
+returns void
+language plpgsql
+security definer
+as $$
+begin
+  update public.universities
+  set active_students = active_students + 1
   where id = uni_id;
 end;
 $$;

@@ -59,8 +59,47 @@ export const addNewUniversity = async (name: string, location: string): Promise<
   }
 };
 
+// --- CRITICAL FIX: Recalculate University Stats from Source of Truth ---
+// This fixes "Wrong Student Count" and "Points Drift" by summing raw data 
+// instead of relying on incrementing counters.
+export const recalculateUniversityStats = async (universityId: string) => {
+    try {
+        console.log(`Recalculating stats for University ID: ${universityId}`);
+
+        // 1. Get Exact Student Count (Count rows in user_profiles)
+        const { count: studentCount, error: countError } = await supabase
+            .from('user_profiles')
+            .select('*', { count: 'exact', head: true })
+            .eq('university_id', universityId);
+
+        if (countError) throw countError;
+
+        // 2. Get Exact Total Points (Sum points in user_profiles)
+        const { data: profiles, error: pointsError } = await supabase
+            .from('user_profiles')
+            .select('points')
+            .eq('university_id', universityId);
+
+        if (pointsError) throw pointsError;
+
+        const totalPoints = profiles?.reduce((acc, curr) => acc + (curr.points || 0), 0) || 0;
+
+        // 3. Update the University Master Record
+        await supabase
+            .from('universities')
+            .update({ 
+                active_students: studentCount || 0,
+                points: totalPoints 
+            })
+            .eq('id', universityId);
+            
+        console.log(`Success: Uni ${universityId} -> Students: ${studentCount}, Points: ${totalPoints}`);
+    } catch (e) {
+        console.error("Error recalculating university stats:", e);
+    }
+};
+
 // Save User Profile immediately during Onboarding
-// FIXED: Logic to prevent student count inflation
 export const registerNewUser = async (email: string, name: string, universityId?: string) => {
   try {
     // 1. Check if user already exists
@@ -85,18 +124,15 @@ export const registerNewUser = async (email: string, name: string, universityId?
       return true;
     }
 
-    // 3. Increment University Student Count ONLY if this is a new attribution
+    // 3. FIX: Trigger Recalculation if University Changed/Added
     if (universityId) {
-        const isNewAssignment = !existingUser || existingUser.university_id !== universityId;
-        
-        if (isNewAssignment) {
-            console.log("New student joined university. Incrementing count.");
-            // Fetch current count to increment safely
-            const { data: uni } = await supabase.from('universities').select('active_students').eq('id', universityId).single();
-            if (uni) {
-                await supabase.from('universities').update({ 
-                    active_students: (uni.active_students || 0) + 1 
-                }).eq('id', universityId);
+        // If it's a new user OR they changed universities, recalculate
+        if (!existingUser || existingUser.university_id !== universityId) {
+            await recalculateUniversityStats(universityId);
+            
+            // If they moved FROM another uni, recalculate that one too to decrease count
+            if (existingUser?.university_id && existingUser.university_id !== universityId) {
+                await recalculateUniversityStats(existingUser.university_id);
             }
         }
     }
@@ -221,20 +257,10 @@ export const registerUserVote = async (email: string, name: string, pointsToAdd:
 
     localStorage.setItem('userPoints', newTotalPoints.toString());
 
-    // 3. Update University Points (Manual calculation to avoid double counting students)
+    // 3. FIX: Update University Points via Recalculation
+    // This ensures consistency even if multiple people vote at once.
     if (uniId) {
-       const { data: uni } = await supabase
-          .from('universities')
-          .select('points')
-          .eq('id', uniId)
-          .single();
-       
-       if (uni) {
-         await supabase.from('universities').update({
-           points: (uni.points || 0) + pointsToAdd
-           // Note: We DO NOT increment active_students here. That is done in registerNewUser only.
-         }).eq('id', uniId);
-       }
+       await recalculateUniversityStats(uniId);
     }
     
     return !!uniId;
