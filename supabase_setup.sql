@@ -1,13 +1,36 @@
 
 -- ==========================================
--- 0. Cleanup (Optional: Reset Policies)
+-- 0. Cleanup (Reset Policies to avoid "Already Exists" errors)
 -- ==========================================
--- Run this to clear old policies if you are facing conflicts, 
--- otherwise you can skip to Table Creation.
+
+-- User Profiles
+DROP POLICY IF EXISTS "Public Profiles Access" ON public.user_profiles;
+DROP POLICY IF EXISTS "Public Profiles Insert" ON public.user_profiles;
+DROP POLICY IF EXISTS "Public Profiles Update" ON public.user_profiles;
+-- Cleanup old names just in case
 DROP POLICY IF EXISTS "Enable read access for all users" ON public.user_profiles;
 DROP POLICY IF EXISTS "Enable insert for all users" ON public.user_profiles;
 DROP POLICY IF EXISTS "Enable update for all users" ON public.user_profiles;
--- (Repeat drop for other tables if necessary for clean slate)
+
+-- Film Votes
+DROP POLICY IF EXISTS "Public Votes Access" ON public.film_votes;
+DROP POLICY IF EXISTS "Public Votes Insert" ON public.film_votes;
+DROP POLICY IF EXISTS "Public Votes Update" ON public.film_votes;
+
+-- Film Questions
+DROP POLICY IF EXISTS "Public Questions Access" ON public.film_questions;
+DROP POLICY IF EXISTS "Public Questions Insert" ON public.film_questions;
+
+-- Master Data
+DROP POLICY IF EXISTS "Public Read Master" ON public.master_films;
+DROP POLICY IF EXISTS "Public Update Master" ON public.master_films;
+
+DROP POLICY IF EXISTS "Public Read Unis" ON public.universities;
+DROP POLICY IF EXISTS "Public Update Unis" ON public.universities;
+DROP POLICY IF EXISTS "Public Insert Unis" ON public.universities;
+
+DROP POLICY IF EXISTS "Public Read Festivals" ON public.festivals;
+DROP POLICY IF EXISTS "Public Read FestivalFilms" ON public.festival_films;
 
 -- ==========================================
 -- 1. Create Universities/Colleges Table
@@ -150,53 +173,48 @@ create policy "Public Read Festivals" on public.festivals for select using (true
 create policy "Public Read FestivalFilms" on public.festival_films for select using (true);
 
 -- ==========================================
--- 10. RPC Functions (CORRECTED)
+-- 10. Initial Seed (Run only if empty)
 -- ==========================================
 
--- FIXED: This function now ONLY increments points, NOT students.
-create or replace function increment_university_points(uni_id uuid, points_to_add int)
-returns void
-language plpgsql
-security definer
-as $$
-begin
-  update public.universities
-  set points = points + points_to_add
-  where id = uni_id;
-end;
-$$;
-
--- NEW: Function to specifically increment student count (optional usage)
-create or replace function increment_student_count(uni_id uuid)
-returns void
-language plpgsql
-security definer
-as $$
-begin
-  update public.universities
-  set active_students = active_students + 1
-  where id = uni_id;
-end;
-$$;
-
--- Function to increment film vote count safely
-create or replace function increment_vote(row_id uuid)
-returns void
-language plpgsql
-security definer
-as $$
-begin
-  update public.master_films
-  set votes_count = votes_count + 1
-  where id = row_id;
-end;
-$$;
-
--- ==========================================
--- 11. Initial Seed (Run only if empty)
--- ==========================================
+-- Seed Festivals
 INSERT INTO public.festivals (name, location, start_date, end_date, status, is_active)
 SELECT 'ATOM Student Awards 2024', 'Online', NOW(), NOW() + interval '30 days', 'Live', true
 WHERE NOT EXISTS (SELECT 1 FROM public.festivals);
+
+-- Seed Universities (Real UUIDs will be generated)
+INSERT INTO public.universities (name, location, logo, active_students, points)
+SELECT 'Film and Television Institute of India (FTII)', 'Pune', '🎥', 0, 0
+WHERE NOT EXISTS (SELECT 1 FROM public.universities WHERE name LIKE 'Film and Television%');
+
+INSERT INTO public.universities (name, location, logo, active_students, points)
+SELECT 'Satyajit Ray Film & TV Institute', 'Kolkata', '🎬', 0, 0
+WHERE NOT EXISTS (SELECT 1 FROM public.universities WHERE name LIKE 'Satyajit Ray%');
+
+INSERT INTO public.universities (name, location, logo, active_students, points)
+SELECT 'National Institute of Design (NID)', 'Ahmedabad', '🎨', 0, 0
+WHERE NOT EXISTS (SELECT 1 FROM public.universities WHERE name LIKE 'National Institute of Design%');
+
+-- Seed Films (Real UUIDs will be generated)
+INSERT INTO public.master_films (title, director, genre, image_url, status)
+SELECT 'The Silent Glaciers', 'Elena Rossi', 'Environment', 'https://images.unsplash.com/photo-1518182170546-07fa6eb3eb3d?w=500&q=80', 'Active'
+WHERE NOT EXISTS (SELECT 1 FROM public.master_films WHERE title = 'The Silent Glaciers');
+
+INSERT INTO public.master_films (title, director, genre, image_url, status)
+SELECT 'Urban Rhythm', 'Marcus Chen', 'Short Doc', 'https://images.unsplash.com/photo-1496337589254-7e19d01cec44?w=500&q=80', 'Active'
+WHERE NOT EXISTS (SELECT 1 FROM public.master_films WHERE title = 'Urban Rhythm');
+
+-- Assign Films to Festival
+-- This safely finds the UUIDs and links them
+INSERT INTO public.festival_films (festival_id, film_id, sequence_order)
+SELECT f.id, m.id, 1
+FROM public.festivals f, public.master_films m
+WHERE f.name = 'ATOM Student Awards 2024' AND m.title = 'The Silent Glaciers'
+AND NOT EXISTS (SELECT 1 FROM public.festival_films WHERE festival_id = f.id AND film_id = m.id);
+
+INSERT INTO public.festival_films (festival_id, film_id, sequence_order)
+SELECT f.id, m.id, 2
+FROM public.festivals f, public.master_films m
+WHERE f.name = 'ATOM Student Awards 2024' AND m.title = 'Urban Rhythm'
+AND NOT EXISTS (SELECT 1 FROM public.festival_films WHERE festival_id = f.id AND film_id = m.id);
 
 GRANT ALL ON ALL TABLES IN SCHEMA public TO anon, authenticated, service_role;

@@ -1,7 +1,6 @@
 
 import { supabase } from './supabase';
 import { University } from '../types';
-import { MOCK_UNIVERSITIES } from './mockData';
 
 // Helper: Title Case
 const toTitleCase = (str: string) => {
@@ -10,7 +9,9 @@ const toTitleCase = (str: string) => {
   });
 };
 
-// Fetch list for Onboarding Dropdown with Fallback
+// Fetch list for Onboarding Dropdown
+// CHANGED: Removed Mock Data fallback to prevent UUID mismatch errors.
+// Now strictly fetches from Supabase.
 export const getUniversities = async (): Promise<University[]> => {
   try {
     const { data, error } = await supabase
@@ -18,15 +19,15 @@ export const getUniversities = async (): Promise<University[]> => {
       .select('*')
       .order('name', { ascending: true });
     
-    if (error || !data || data.length === 0) {
-      // console.warn("Supabase fetch failed or empty, using mock data.", error?.message);
-      return MOCK_UNIVERSITIES;
+    if (error) {
+      console.error("Supabase fetch error:", error);
+      return [];
     }
     
-    return (data as University[]);
+    return (data as University[]) || [];
   } catch (err) {
-    console.error("Unexpected error fetching universities, using fallback:", err);
-    return MOCK_UNIVERSITIES;
+    console.error("Unexpected error fetching universities:", err);
+    return [];
   }
 };
 
@@ -60,12 +61,10 @@ export const addNewUniversity = async (name: string, location: string): Promise<
 };
 
 // --- CRITICAL FIX: Recalculate University Stats from Source of Truth ---
-// This fixes "Wrong Student Count" and "Points Drift" by summing raw data 
-// instead of relying on incrementing counters.
 export const recalculateUniversityStats = async (universityId: string) => {
+    if (!universityId) return;
+    
     try {
-        console.log(`Recalculating stats for University ID: ${universityId}`);
-
         // 1. Get Exact Student Count (Count rows in user_profiles)
         const { count: studentCount, error: countError } = await supabase
             .from('user_profiles')
@@ -93,7 +92,6 @@ export const recalculateUniversityStats = async (universityId: string) => {
             })
             .eq('id', universityId);
             
-        console.log(`Success: Uni ${universityId} -> Students: ${studentCount}, Points: ${totalPoints}`);
     } catch (e) {
         console.error("Error recalculating university stats:", e);
     }
@@ -121,10 +119,10 @@ export const registerNewUser = async (email: string, name: string, universityId?
 
     if (error) {
       console.error("Error saving profile:", error.message);
-      return true;
+      return false;
     }
 
-    // 3. FIX: Trigger Recalculation if University Changed/Added
+    // 3. Trigger Recalculation if University Changed/Added
     if (universityId) {
         // If it's a new user OR they changed universities, recalculate
         if (!existingUser || existingUser.university_id !== universityId) {
@@ -140,7 +138,7 @@ export const registerNewUser = async (email: string, name: string, universityId?
     return true;
   } catch (e) {
     console.error("Register user exception:", e);
-    return true; 
+    return false; 
   }
 };
 
@@ -173,7 +171,6 @@ export const syncUserProfile = async (email: string) => {
       .single();
 
     if (data && !error) {
-      console.log("Syncing profile...", data);
       localStorage.setItem('userPoints', (data.points || 0).toString());
       if (data.name) localStorage.setItem('userName', data.name);
       
@@ -198,6 +195,8 @@ export const syncUserProfile = async (email: string) => {
 
 // CRITICAL: Recalculate Master Film Stats (Rating & Count) based on Votes table
 export const recalculateFilmStats = async (filmId: string) => {
+    if (!filmId) return;
+
     try {
         const { data: votes, error } = await supabase
             .from('film_votes')
@@ -221,7 +220,6 @@ export const recalculateFilmStats = async (filmId: string) => {
             })
             .eq('id', filmId);
             
-        console.log(`Updated stats for film ${filmId}: ${average.toFixed(1)} stars, ${totalVotes} votes`);
     } catch (e) {
         console.error("Error recalculating stats:", e);
     }
@@ -257,8 +255,7 @@ export const registerUserVote = async (email: string, name: string, pointsToAdd:
 
     localStorage.setItem('userPoints', newTotalPoints.toString());
 
-    // 3. FIX: Update University Points via Recalculation
-    // This ensures consistency even if multiple people vote at once.
+    // 3. Update University Points via Recalculation
     if (uniId) {
        await recalculateUniversityStats(uniId);
     }
