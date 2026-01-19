@@ -1,9 +1,9 @@
 
 import React, { useState } from 'react';
-import { Star, X, Mail, MessageSquare, Sparkles, CheckCircle, ArrowRight, Share2, School, Info } from 'lucide-react';
+import { Star, X, Mail, MessageSquare, Sparkles, CheckCircle, ArrowRight, Share2, School, Info, AlertTriangle } from 'lucide-react';
 import { supabase } from '../services/supabase';
 import { gradeUserReview } from '../services/ai';
-import { registerUserVote, syncUserProfile } from '../services/auth';
+import { registerUserVote, syncUserProfile, recalculateFilmStats } from '../services/auth';
 
 interface VotingModalProps {
   filmId: string;
@@ -39,6 +39,7 @@ const VotingModal: React.FC<VotingModalProps> = ({ filmId, filmTitle, onClose, o
   const [review, setReview] = useState('');
   const [pointsEarned, setPointsEarned] = useState(0);
   const [aiFeedback, setAiFeedback] = useState('');
+  const [isAiError, setIsAiError] = useState(false);
   const [linkedUniversity, setLinkedUniversity] = useState(false);
   const userUniversityName = localStorage.getItem('userUniversityName');
 
@@ -103,24 +104,18 @@ const VotingModal: React.FC<VotingModalProps> = ({ filmId, filmTitle, onClose, o
              console.error("Error saving vote:", voteError.message);
         }
 
-        // 3. ONLY increment global vote count if this was a NEW vote
+        // 3. Increment Points (User Participation)
         if (!existingVote) {
-             const { error: rpcError } = await supabase.rpc('increment_vote', { row_id: filmId });
-             if (rpcError) {
-                 console.warn("RPC increment_vote failed:", rpcError.message);
-                 // Fallback manual increment (rarely needed)
-                 const { data: film } = await supabase.from('master_films').select('votes_count').eq('id', filmId).single();
-                 if (film) {
-                     await supabase.from('master_films').update({ votes_count: (film.votes_count || 0) + 1 }).eq('id', filmId);
-                 }
-             }
-             
              // Also give points for participation only if new
              const isLinked = await registerUserVote(userEmail, name, 10); 
              setLinkedUniversity(isLinked);
         } else {
-            console.log("Existing vote detected. Updated rating but skipped global count increment.");
+            console.log("Existing vote detected. Updated rating.");
         }
+
+        // 4. CRITICAL: Recalculate Master Film Stats immediately
+        // This fixes the "0.0" rating bug by aggregating all votes
+        await recalculateFilmStats(filmId);
         
     } catch (e) {
         console.error("Vote submission critical error:", e);
@@ -133,6 +128,17 @@ const VotingModal: React.FC<VotingModalProps> = ({ filmId, filmTitle, onClose, o
     
     // Call Google AI
     const grade = await gradeUserReview(filmTitle, review);
+    
+    // Detect failure keywords from ai.ts fallbacks
+    let displayFeedback = grade.constructiveFeedback;
+    const isError = displayFeedback.includes("AI Offline") || displayFeedback.includes("Key missing") || displayFeedback.includes("unavailable");
+    
+    if (isError) {
+        displayFeedback = "AI grading could not be completed at this time. Your vote has been registered successfully.";
+        setIsAiError(true);
+    } else {
+        setIsAiError(false);
+    }
     
     // Update the existing vote record with the review
     const storedEmail = localStorage.getItem('userEmail');
@@ -167,7 +173,7 @@ const VotingModal: React.FC<VotingModalProps> = ({ filmId, filmTitle, onClose, o
     }
 
     setPointsEarned(grade.pointsAwarded);
-    setAiFeedback(grade.constructiveFeedback);
+    setAiFeedback(displayFeedback);
     setStep('SUCCESS');
     setTimeout(() => {
         onVoteComplete(); 
@@ -334,9 +340,12 @@ const VotingModal: React.FC<VotingModalProps> = ({ filmId, filmTitle, onClose, o
             <p className="text-slate-500 text-sm mb-4">Your vote has been successfully cast.</p>
 
             {pointsEarned > 0 && (
-                <div className="bg-brand-50 p-4 rounded-xl border border-brand-100 mb-6">
-                    <p className="text-brand-800 font-bold text-lg">+{pointsEarned} Points Earned</p>
-                    <p className="text-xs text-brand-600 mt-1 mb-2">"{aiFeedback}"</p>
+                <div className={`p-4 rounded-xl border mb-6 ${isAiError ? 'bg-orange-50 border-orange-100' : 'bg-brand-50 border-brand-100'}`}>
+                    {isAiError && <AlertTriangle size={20} className="mx-auto text-orange-500 mb-2" />}
+                    <p className={`${isAiError ? 'text-orange-800' : 'text-brand-800'} font-bold text-lg`}>+{pointsEarned} Points Earned</p>
+                    <p className={`text-xs mt-1 mb-2 ${isAiError ? 'text-orange-700' : 'text-brand-600'}`}>
+                        "{aiFeedback}"
+                    </p>
                 </div>
             )}
             

@@ -1,7 +1,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { PlayCircle, Trophy, Star, Users, BarChart3, MapPin, Calendar, AlertCircle, ChevronDown } from 'lucide-react';
+import { PlayCircle, Star, Users, BarChart3, MapPin, Calendar, AlertCircle, ChevronDown } from 'lucide-react';
 import { supabase } from '../services/supabase';
 import { Film, University, Festival } from '../types';
 
@@ -203,7 +203,7 @@ const HomePage: React.FC = () => {
                )}
            </div>
         </div>
-
+        
         {/* 3. Real-time Quick Stats Widget */}
         <div className="grid grid-cols-2 gap-3">
             <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex flex-col items-center text-center">
@@ -226,8 +226,7 @@ const HomePage: React.FC = () => {
         <div>
             <div className="flex justify-between items-end mb-4 px-1">
                 <div>
-                    <h3 className="font-bold text-slate-900 text-lg flex items-center gap-2">
-                        <Trophy size={20} className="text-amber-500" />
+                    <h3 className="font-bold text-slate-900 text-lg mb-1">
                         Campus Leaders
                     </h3>
                 </div>

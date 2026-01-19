@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Film, User, ChevronRight, Check, School, Mail, Loader2, Play, Plus, MapPin, ArrowLeft } from 'lucide-react';
+import { User, ChevronRight, Check, School, Mail, Loader2, Plus, MapPin, ArrowLeft } from 'lucide-react';
 import { getUniversities, registerNewUser, addNewUniversity, syncUserProfile, fetchUserVoteHistory } from '../services/auth';
 import { University } from '../types';
 
@@ -50,18 +50,12 @@ const OnboardingPage: React.FC = () => {
     }
     
     // 2. Save to Supabase (Cloud Persistence)
-    // This upserts the user, ensuring they exist in the DB
     await registerNewUser(email.trim(), name.trim(), selectedUni?.id);
 
-    // 3. CRITICAL: Sync previous data (Votes & Points) from Supabase
-    // This handles the "Clear Cookies -> Re-enter Email" scenario
-    console.log("Restoring session for returning user...");
-    await syncUserProfile(email.trim()); // Restores points & university if they differ
-    
+    // 3. Sync previous data
+    await syncUserProfile(email.trim()); 
     const previousVotes = await fetchUserVoteHistory(email.trim());
     if (previousVotes.length > 0) {
-        // Update local storage so the UI knows which films are already voted
-        // We merge with existing just in case, though usually it's empty after clear
         const existing = JSON.parse(localStorage.getItem('votedFilms') || '[]');
         const merged = Array.from(new Set([...existing, ...previousVotes]));
         localStorage.setItem('votedFilms', JSON.stringify(merged));
@@ -80,14 +74,14 @@ const OnboardingPage: React.FC = () => {
     if (newUni) {
         // Success: Select it and close add mode
         setSelectedUni(newUni);
-        setUniversities(prev => [...prev, newUni]); // Optimistic update
+        setUniversities(prev => [...prev, newUni]);
         setIsAddingUni(false);
         setSearchQuery(''); 
     }
     setIsCreatingUni(false);
   };
 
-  // Filter Universities
+  // Filter Universities logic
   const filteredUnis = universities.filter(u => 
     u.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
@@ -101,32 +95,19 @@ const OnboardingPage: React.FC = () => {
       case 0:
         return (
           <div className="flex flex-col items-center text-center space-y-6 animate-fade-in w-full max-w-xs mx-auto">
-            {/* Custom Logo: Red Film Strip with Checkmark on Yellow Background */}
+            {/* Custom Logo */}
             <div className="relative w-36 h-36 flex items-center justify-center mb-4">
-               {/* Background Blobs */}
                <div className="absolute inset-0 bg-accent-400 rounded-[2.5rem] rotate-6 opacity-20 animate-pulse"></div>
                <div className="absolute inset-0 bg-red-400 rounded-[2.5rem] -rotate-6 opacity-20 animate-pulse delay-75"></div>
-               
-               {/* Main Logo Container (Yellow Rounded Square) */}
                <div className="relative z-10 bg-[#FFD100] w-28 h-28 rounded-[2rem] shadow-xl flex items-center justify-center border-4 border-white overflow-hidden">
-                  
-                  {/* Red Film Strip Block */}
                   <div className="w-20 h-16 bg-[#E31E24] rounded-lg relative flex items-center justify-center shadow-inner">
-                      
-                      {/* Film Perforations (Top) */}
                       <div className="absolute -top-1 left-0 right-0 flex justify-center gap-1.5">
                           {[1,2,3,4,5,6].map(i => <div key={`t-${i}`} className="w-1.5 h-2 bg-[#FFD100] rounded-b-sm"></div>)}
                       </div>
-                      
-                      {/* Film Perforations (Bottom) */}
                       <div className="absolute -bottom-1 left-0 right-0 flex justify-center gap-1.5">
                           {[1,2,3,4,5,6].map(i => <div key={`b-${i}`} className="w-1.5 h-2 bg-[#FFD100] rounded-t-sm"></div>)}
                       </div>
-
-                      {/* White Checkmark */}
                       <Check className="text-white drop-shadow-md" size={40} strokeWidth={4} />
-                      
-                      {/* Vertical Strip Line (Decorative) */}
                       <div className="absolute left-3 top-2 bottom-2 w-1 border-r-2 border-dashed border-white/30"></div>
                   </div>
                </div>
@@ -183,7 +164,7 @@ const OnboardingPage: React.FC = () => {
                  </div>
                </div>
 
-               {/* University Section - Either Search or Create */}
+               {/* University Section - Type Ahead Behavior */}
                {!isAddingUni ? (
                    <div className="space-y-1.5 relative z-20">
                      <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider ml-1">College / University <span className="text-red-500">*</span></label>
@@ -196,17 +177,22 @@ const OnboardingPage: React.FC = () => {
                             type="text"
                             value={selectedUni ? selectedUni.name : searchQuery}
                             onChange={(e) => {
-                                setSearchQuery(e.target.value);
+                                const val = e.target.value;
+                                setSearchQuery(val);
                                 setSelectedUni(null);
-                                setShowDropdown(true);
+                                // FIX: Only show dropdown if user has typed something
+                                setShowDropdown(val.length > 0);
                             }}
-                            onFocus={() => setShowDropdown(true)}
-                            placeholder="Search your college..."
+                            onFocus={() => {
+                                // FIX: On focus, only show if there is already text
+                                if (searchQuery.length > 0) setShowDropdown(true);
+                            }}
+                            placeholder="Type to search your college..."
                             className={`w-full pl-10 pr-4 py-3.5 bg-slate-50 border rounded-xl font-medium text-slate-900 outline-none transition-all text-sm ${selectedUni ? 'border-brand-500 bg-brand-50/50' : 'border-slate-200 focus:border-brand-500'}`}
                         />
                         {selectedUni && (
                             <button 
-                                onClick={() => { setSelectedUni(null); setSearchQuery(''); }}
+                                onClick={() => { setSelectedUni(null); setSearchQuery(''); setShowDropdown(false); }}
                                 className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-red-500"
                             >
                                 <span className="text-[10px] font-bold uppercase">Change</span>
@@ -236,17 +222,16 @@ const OnboardingPage: React.FC = () => {
                                             </div>
                                         </button>
                                     ))}
-                                    {/* Action at bottom of list */}
                                     <div className="p-2 border-t border-slate-50 sticky bottom-0 bg-white">
                                         <button 
                                             onClick={() => {
                                                 setIsAddingUni(true);
                                                 setShowDropdown(false);
-                                                setNewUniName(searchQuery); // Pre-fill with what they typed
+                                                setNewUniName(searchQuery); 
                                             }}
                                             className="w-full py-2.5 rounded-lg border border-slate-200 text-xs font-bold text-brand-600 hover:bg-brand-50 flex items-center justify-center gap-1"
                                         >
-                                            <Plus size={14} /> Add "{searchQuery || 'New'}"
+                                            <Plus size={14} /> My college isn't listed
                                         </button>
                                     </div>
                                  </>
@@ -287,6 +272,7 @@ const OnboardingPage: React.FC = () => {
                                    placeholder="e.g. St. Xavier's College"
                                    className="w-full p-2 bg-white border border-slate-200 rounded-lg text-sm font-medium outline-none focus:border-brand-500 mt-1"
                                />
+                               <p className="text-[9px] text-slate-400 mt-1">We'll capitalize this automatically.</p>
                            </div>
                            <div>
                                <label className="text-[10px] font-bold text-slate-500 uppercase">City / Location</label>
@@ -329,13 +315,10 @@ const OnboardingPage: React.FC = () => {
   };
 
   return (
-    // Uses 100dvh (Dynamic Viewport Height) to ensure it fits perfectly on mobile browsers
     <div className="h-[100dvh] bg-white flex flex-col p-6 pb-safe max-w-md mx-auto relative overflow-hidden">
       
-      {/* Decorative background blur (Updated to Red/Yellow) */}
       <div className="absolute top-[-20%] left-[-20%] w-[150%] h-[50%] bg-brand-50/80 blur-3xl rounded-full -z-10 pointer-events-none"></div>
 
-      {/* Header */}
       <div className="w-full flex justify-between items-center h-12 flex-shrink-0">
         {step > 0 ? (
           <button onClick={() => setStep(step - 1)} className="text-slate-400 p-2 -ml-2 hover:bg-slate-50 rounded-full transition-colors">
@@ -344,14 +327,11 @@ const OnboardingPage: React.FC = () => {
         ) : <div />}
       </div>
 
-      {/* Main Content - Flex Grow to push Footer down */}
       <div className="flex-grow flex items-center justify-center w-full z-10">
         {renderContent()}
       </div>
 
-      {/* Footer / Controls - Flex Shrink to stay visible */}
       <div className="w-full space-y-4 mt-auto pt-4 flex-shrink-0 z-20 bg-white/80 backdrop-blur-sm">
-        {/* Step Indicators */}
         <div className="flex justify-center gap-2 mb-2">
           {[0, 1].map((i) => (
             <div 
@@ -363,7 +343,6 @@ const OnboardingPage: React.FC = () => {
           ))}
         </div>
 
-        {/* Action Button */}
         <button 
           onClick={() => {
             if (step === 0) {
@@ -394,7 +373,6 @@ const OnboardingPage: React.FC = () => {
           )}
         </button>
 
-        {/* Branding */}
         <div className="text-center pt-2 pb-1">
              <p className="text-[10px] font-semibold text-slate-400">
                Powered by <span className="text-brand-600">NilgirisNext Foundation for Art & Culture</span>

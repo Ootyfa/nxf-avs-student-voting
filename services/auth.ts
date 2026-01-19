@@ -3,6 +3,13 @@ import { supabase } from './supabase';
 import { University } from '../types';
 import { MOCK_UNIVERSITIES } from './mockData';
 
+// Helper: Title Case
+const toTitleCase = (str: string) => {
+  return str.replace(/\w\S*/g, (txt) => {
+    return txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase();
+  });
+};
+
 // Fetch list for Onboarding Dropdown with Fallback
 export const getUniversities = async (): Promise<University[]> => {
   try {
@@ -12,7 +19,7 @@ export const getUniversities = async (): Promise<University[]> => {
       .order('name', { ascending: true });
     
     if (error || !data || data.length === 0) {
-      console.warn("Supabase fetch failed or empty, using mock data.", error?.message);
+      // console.warn("Supabase fetch failed or empty, using mock data.", error?.message);
       return MOCK_UNIVERSITIES;
     }
     
@@ -26,20 +33,23 @@ export const getUniversities = async (): Promise<University[]> => {
 // NEW: Allow user to add a new university if theirs is missing
 export const addNewUniversity = async (name: string, location: string): Promise<University | null> => {
   try {
+    const formattedName = toTitleCase(name.trim());
+    const formattedLocation = toTitleCase(location.trim());
+
     const { data, error } = await supabase
       .from('universities')
       .insert({ 
-        name: name.trim(), 
-        location: location.trim(), 
+        name: formattedName, 
+        location: formattedLocation, 
         logo: '🎓', // Default emoji logo
-        active_students: 0,
+        active_students: 1, // Start with 1 (the creator)
         points: 0 
       })
       .select()
       .single();
 
     if (error) {
-      console.error("Error creating university:", error.message, error.details);
+      console.error("Error creating university:", error.message);
       return null;
     }
     return data as University;
@@ -50,26 +60,51 @@ export const addNewUniversity = async (name: string, location: string): Promise<
 };
 
 // Save User Profile immediately during Onboarding
+// FIXED: Logic to prevent student count inflation
 export const registerNewUser = async (email: string, name: string, universityId?: string) => {
   try {
+    // 1. Check if user already exists
+    const { data: existingUser } = await supabase
+        .from('user_profiles')
+        .select('university_id')
+        .eq('email', email)
+        .single();
+
+    // 2. Upsert the user
     const { error } = await supabase
       .from('user_profiles')
       .upsert({
         email: email,
         name: name,
         university_id: universityId || null,
-        // We don't overwrite points if they exist, but if new, default to 0
+        is_student: !!universityId
       }, { onConflict: 'email' });
 
     if (error) {
-      console.error("Error saving profile to Supabase:", error.message);
-      // We return true anyway to let the UI proceed in offline/demo mode
+      console.error("Error saving profile:", error.message);
       return true;
     }
+
+    // 3. Increment University Student Count ONLY if this is a new attribution
+    if (universityId) {
+        const isNewAssignment = !existingUser || existingUser.university_id !== universityId;
+        
+        if (isNewAssignment) {
+            console.log("New student joined university. Incrementing count.");
+            // Fetch current count to increment safely
+            const { data: uni } = await supabase.from('universities').select('active_students').eq('id', universityId).single();
+            if (uni) {
+                await supabase.from('universities').update({ 
+                    active_students: (uni.active_students || 0) + 1 
+                }).eq('id', universityId);
+            }
+        }
+    }
+
     return true;
   } catch (e) {
     console.error("Register user exception:", e);
-    return true; // Fail open for demo
+    return true; 
   }
 };
 
@@ -82,15 +117,12 @@ export const fetchUserVoteHistory = async (email: string): Promise<string[]> => 
       .eq('user_email', email);
 
     if (error) {
-      console.error("Error fetching vote history:", error);
       return [];
     }
     
     const ids = data.map((v: any) => v.film_id);
-    console.log(`Restored ${ids.length} votes for ${email}`);
     return ids;
   } catch (e) {
-    console.error("Exception fetching votes:", e);
     return [];
   }
 };
@@ -105,72 +137,80 @@ export const syncUserProfile = async (email: string) => {
       .single();
 
     if (data && !error) {
-      console.log("Existing user found, syncing profile...", data);
-      
-      // Restore Points
+      console.log("Syncing profile...", data);
       localStorage.setItem('userPoints', (data.points || 0).toString());
+      if (data.name) localStorage.setItem('userName', data.name);
       
-      // Restore Name if valid
-      if (data.name) {
-          localStorage.setItem('userName', data.name);
-      }
-      
-      // Restore University
       if (data.university_id) {
         localStorage.setItem('userUniversityId', data.university_id);
         localStorage.setItem('isStudent', 'true');
         
-        // Fetch uni name for UI consistency
         const { data: uni } = await supabase
             .from('universities')
             .select('name')
             .eq('id', data.university_id)
             .single();
-            
-        if (uni) {
-            localStorage.setItem('userUniversityName', uni.name);
-        } else {
-             // Fallback lookup in mock data
-             const mockUni = MOCK_UNIVERSITIES.find(u => u.id === data.university_id);
-             if (mockUni) localStorage.setItem('userUniversityName', mockUni.name);
-        }
+        if (uni) localStorage.setItem('userUniversityName', uni.name);
       }
       return true;
     }
   } catch (e) {
-    console.log("Sync profile failed or user new:", e);
+    console.log("Sync profile failed:", e);
   }
   return false;
+};
+
+// CRITICAL: Recalculate Master Film Stats (Rating & Count) based on Votes table
+export const recalculateFilmStats = async (filmId: string) => {
+    try {
+        const { data: votes, error } = await supabase
+            .from('film_votes')
+            .select('rating')
+            .eq('film_id', filmId);
+
+        if (error || !votes) return;
+
+        const totalVotes = votes.length;
+        if (totalVotes === 0) return;
+
+        const sum = votes.reduce((acc, curr) => acc + (curr.rating || 0), 0);
+        const average = sum / totalVotes;
+
+        // Update Master Table
+        await supabase
+            .from('master_films')
+            .update({ 
+                rating: average,
+                votes_count: totalVotes
+            })
+            .eq('id', filmId);
+            
+        console.log(`Updated stats for film ${filmId}: ${average.toFixed(1)} stars, ${totalVotes} votes`);
+    } catch (e) {
+        console.error("Error recalculating stats:", e);
+    }
 };
 
 // Handle Vote + University Point Attribution
 export const registerUserVote = async (email: string, name: string, pointsToAdd: number) => {
   try {
-    console.log(`Registering vote for ${email}: +${pointsToAdd} points`);
-    
-    // 1. Fetch existing profile first to get CURRENT points
-    const { data: existingUser, error: fetchError } = await supabase
+    // 1. Fetch existing profile points
+    const { data: existingUser } = await supabase
         .from('user_profiles')
         .select('points, university_id')
         .eq('email', email)
         .single();
 
-    if (fetchError) {
-        console.warn("Could not fetch user profile, creating new entry fallback.");
-    }
-
     const currentDbPoints = existingUser ? (existingUser.points || 0) : 0;
     const newTotalPoints = currentDbPoints + pointsToAdd;
     
-    // Determine University ID: Prefer Local Storage (recent choice), fallback to DB
     let uniId = localStorage.getItem('userUniversityId');
     if (!uniId && existingUser?.university_id) {
         uniId = existingUser.university_id;
-        localStorage.setItem('userUniversityId', uniId); // Sync back to local
     }
 
-    // 2. Upsert User Profile with new total
-    const { error: upsertError } = await supabase
+    // 2. Upsert User Profile
+    await supabase
       .from('user_profiles')
       .upsert({
         email: email,
@@ -179,46 +219,35 @@ export const registerUserVote = async (email: string, name: string, pointsToAdd:
         university_id: uniId || null
       }, { onConflict: 'email' });
 
-    if (upsertError) {
-        console.error("Profile stats update failed:", upsertError.message);
-    } else {
-        // Update local storage to match DB
-        localStorage.setItem('userPoints', newTotalPoints.toString());
-    }
+    localStorage.setItem('userPoints', newTotalPoints.toString());
 
-    // 3. If user belongs to a university, increment university stats
+    // 3. Update University Points (Manual calculation to avoid double counting students)
     if (uniId) {
-       // Try RPC first (Atomic update)
-       const { error: rpcError } = await supabase.rpc('increment_university_points', { 
-         uni_id: uniId, 
-         points_to_add: pointsToAdd 
-       });
+       const { data: uni } = await supabase
+          .from('universities')
+          .select('points')
+          .eq('id', uniId)
+          .single();
        
-       if (rpcError) {
-           console.warn("RPC failed, attempting manual fallback update:", rpcError.message);
-           
-           // Fallback: Fetch -> Calculate -> Update
-           const { data: uni, error: uniFetchError } = await supabase
-              .from('universities')
-              .select('points, active_students')
-              .eq('id', uniId)
-              .single();
-           
-           if (!uniFetchError && uni) {
-             const { error: manualUpdateError } = await supabase.from('universities').update({
-               points: (uni.points || 0) + pointsToAdd,
-               // We only roughly increment active students here to avoid complexity
-             }).eq('id', uniId);
-             
-             if (manualUpdateError) console.error("Manual university update failed:", manualUpdateError.message);
-           }
+       if (uni) {
+         await supabase.from('universities').update({
+           points: (uni.points || 0) + pointsToAdd
+           // Note: We DO NOT increment active_students here. That is done in registerNewUser only.
+         }).eq('id', uniId);
        }
     }
     
     return !!uniId;
   } catch (error) {
-    console.error("Critical error in registerUserVote:", error);
-    const storedUniId = localStorage.getItem('userUniversityId');
-    return !!storedUniId;
+    console.error("Error in registerUserVote:", error);
+    return false;
   }
+};
+
+// NEW: Award Points for Trivia
+export const awardBonusPoints = async (points: number) => {
+    const email = localStorage.getItem('userEmail');
+    const name = localStorage.getItem('userName') || 'Anonymous';
+    if (!email) return false;
+    return await registerUserVote(email, name, points);
 };
