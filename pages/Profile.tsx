@@ -1,11 +1,12 @@
 
 import React, { useState, useEffect } from 'react';
-import { CheckCircle, Shield, X, Smartphone, Bookmark, Share2, GraduationCap, School, Search, Pencil, Crown, Circle } from 'lucide-react';
+import { CheckCircle, Shield, X, Smartphone, Bookmark, Share2, GraduationCap, School, Search, Pencil, Crown, Circle, Film as FilmIcon } from 'lucide-react';
 import { MOCK_USERS } from '../services/mockData';
 import { supabase } from '../services/supabase';
 import { Film, University, AchievementTitle } from '../types';
 import { getUniversities } from '../services/auth';
 import { getTitleFromPoints, getNextMilestone } from '../utils/gamification';
+import { getGenreGradient } from '../components/FilmCard';
 
 const ProfilePage: React.FC = () => {
   // Read real data from Local Storage
@@ -227,16 +228,33 @@ const ProfilePage: React.FC = () => {
            </h3>
            {watchlistFilms.length > 0 ? (
                <div className="flex gap-4 overflow-x-auto no-scrollbar pb-2">
-                   {watchlistFilms.map(film => (
-                       <div key={film.id} className="min-w-[100px] w-[100px]">
-                           <img 
-                                src={film.poster_url || film.image_url || 'https://placehold.co/300x450'} 
-                                className="w-full h-32 object-cover rounded-xl shadow-sm mb-2" 
-                                alt={film.title}
-                           />
-                           <p className="text-xs font-bold text-slate-900 truncate">{film.title}</p>
-                       </div>
-                   ))}
+                   {watchlistFilms.map(film => {
+                       const hasImage = !!(film.poster_url || film.image_url);
+                       const displayImage = film.poster_url || film.image_url;
+                       const genre = film.category || film.genre || 'Film';
+                       
+                       return (
+                           <div key={film.id} className="min-w-[100px] w-[100px]">
+                               <div className={`w-full h-32 rounded-xl shadow-sm mb-2 overflow-hidden ${!hasImage ? getGenreGradient(genre) : 'bg-slate-100'}`}>
+                                   {hasImage ? (
+                                       <img 
+                                            src={displayImage} 
+                                            className="w-full h-full object-cover" 
+                                            alt={film.title}
+                                       />
+                                   ) : (
+                                       <div className="w-full h-full flex flex-col justify-center items-center text-center p-1">
+                                           <FilmIcon className="text-white/30 mb-1" size={16} />
+                                           <p className="text-[10px] text-white font-bold leading-tight line-clamp-3">
+                                               {film.title}
+                                           </p>
+                                       </div>
+                                   )}
+                               </div>
+                               <p className="text-xs font-bold text-slate-900 truncate">{film.title}</p>
+                           </div>
+                       );
+                   })}
                </div>
            ) : (
                <div className="bg-white border-2 border-dashed border-slate-200 rounded-2xl p-6 text-center">
@@ -292,10 +310,10 @@ const ProfilePage: React.FC = () => {
             </div>
         </div>
 
-        {/* Branding Footer */}
+        {/* Branding Footer with Hyperlink */}
         <div className="mt-8 pt-4 pb-4 border-t border-slate-100 text-center">
             <p className="text-[10px] text-slate-400 font-semibold mb-3">
-              Powered by <span className="text-brand-600">NilgirisNext Foundation for Art & Culture</span>
+              Powered by <a href="http://nxfindia.org" target="_blank" rel="noopener noreferrer" className="text-brand-600 hover:underline hover:text-brand-700">NilgirisNext Foundation for Art & Culture</a>
             </p>
             <button 
                 onClick={() => setShowPrivacy(true)}

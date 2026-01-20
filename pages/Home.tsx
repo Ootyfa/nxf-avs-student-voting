@@ -1,9 +1,10 @@
 
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { PlayCircle, Star, Users, BarChart3, MapPin, Calendar, AlertCircle, ChevronDown } from 'lucide-react';
+import { PlayCircle, Star, Users, BarChart3, MapPin, Calendar, AlertCircle, ChevronDown, Film as FilmIcon } from 'lucide-react';
 import { supabase } from '../services/supabase';
 import { Film, University, Festival } from '../types';
+import { getGenreGradient } from '../components/FilmCard'; // Use shared gradient logic
 
 const HomePage: React.FC = () => {
   const navigate = useNavigate();
@@ -270,29 +271,46 @@ const HomePage: React.FC = () => {
           </div>
           
           <div className="flex overflow-x-auto gap-4 pb-4 -mx-6 px-6 no-scrollbar snap-x snap-mandatory">
-            {festivalFilms.length > 0 ? festivalFilms.map((film) => (
-              <div 
-                key={film.id}
-                onClick={() => navigate('/films')} // In real app, maybe navigate to detail view directly
-                className="snap-center flex-shrink-0 w-[150px] group cursor-pointer"
-              >
-                <div className="relative aspect-[2/3] rounded-2xl overflow-hidden mb-3 shadow-sm bg-slate-100 border border-slate-100">
-                  <img 
-                    src={film.poster_url || film.image_url} 
-                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                    alt={film.title}
-                    onError={(e) => (e.target as HTMLImageElement).src = 'https://placehold.co/300x450/e2e8f0/64748b?text=No+Img'}
-                  />
-                  {/* Removed "Vote" badge for cleaner design */}
-                  <div className="absolute bottom-2 left-2 bg-white/90 backdrop-blur-md px-2 py-1 rounded-lg flex items-center gap-1 shadow-sm">
-                    <Star size={10} className="text-yellow-400 fill-current" />
-                    <span className="text-slate-900 text-[10px] font-bold">{formatRating(film.rating)}</span>
+            {festivalFilms.length > 0 ? festivalFilms.map((film) => {
+               const hasImage = !!(film.poster_url || film.image_url);
+               const displayImage = film.poster_url || film.image_url;
+               const genre = film.category || film.genre || 'Film';
+
+               return (
+                  <div 
+                    key={film.id}
+                    onClick={() => navigate('/films')}
+                    className="snap-center flex-shrink-0 w-[150px] group cursor-pointer"
+                  >
+                    <div className={`relative aspect-[2/3] rounded-2xl overflow-hidden mb-3 shadow-sm border border-slate-100 ${!hasImage ? getGenreGradient(genre) : 'bg-slate-100'}`}>
+                      {hasImage ? (
+                        <img 
+                            src={displayImage} 
+                            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                            alt={film.title}
+                        />
+                      ) : (
+                         <div className="w-full h-full flex flex-col justify-center items-center text-center p-2 relative">
+                            <div className="absolute top-0 right-0 w-8 h-8 bg-white/10 rounded-bl-lg"></div>
+                            <FilmIcon className="text-white/30 mb-2" size={20} />
+                            <h4 className="text-white font-black text-xs leading-tight mb-1 drop-shadow-md line-clamp-3">
+                                {film.title}
+                            </h4>
+                            <div className="w-4 h-0.5 bg-white/50 rounded-full mb-1"></div>
+                            <p className="text-white/80 text-[10px] uppercase line-clamp-1">{film.director}</p>
+                         </div>
+                      )}
+                      
+                      <div className="absolute bottom-2 left-2 bg-white/90 backdrop-blur-md px-2 py-1 rounded-lg flex items-center gap-1 shadow-sm">
+                        <Star size={10} className="text-yellow-400 fill-current" />
+                        <span className="text-slate-900 text-[10px] font-bold">{formatRating(film.rating)}</span>
+                      </div>
+                    </div>
+                    <h4 className="font-bold text-slate-900 text-sm leading-tight mb-1 truncate">{film.title}</h4>
+                    <p className="text-[10px] text-slate-500 truncate">{film.director}</p>
                   </div>
-                </div>
-                <h4 className="font-bold text-slate-900 text-sm leading-tight mb-1 truncate">{film.title}</h4>
-                <p className="text-[10px] text-slate-500 truncate">{film.director}</p>
-              </div>
-            )) : (
+               );
+            }) : (
               <div className="w-full p-4 text-center text-slate-400 text-sm bg-white rounded-xl border border-slate-100 border-dashed">
                   No films assigned to {activeFestival?.name || 'current festival'}.
               </div>

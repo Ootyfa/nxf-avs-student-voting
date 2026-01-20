@@ -375,7 +375,7 @@ const OnboardingPage: React.FC = () => {
 
         <div className="text-center pt-2 pb-1">
              <p className="text-[10px] font-semibold text-slate-400">
-               Powered by <span className="text-brand-600">NilgirisNext Foundation for Art & Culture</span>
+               Powered by <a href="http://nxfindia.org" target="_blank" rel="noopener noreferrer" className="text-brand-600 hover:underline hover:text-brand-700">NilgirisNext Foundation for Art & Culture</a>
              </p>
         </div>
       </div>

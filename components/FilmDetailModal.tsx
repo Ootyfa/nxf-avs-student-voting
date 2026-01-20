@@ -1,8 +1,9 @@
 
 import React, { useState } from 'react';
-import { X, Play, Clock, Star, MessageCircle, Send, CheckCircle, ThumbsUp, Check } from 'lucide-react';
+import { X, Play, Clock, Star, MessageCircle, Send, CheckCircle, ThumbsUp, Check, Film as FilmIcon } from 'lucide-react';
 import { Film } from '../types';
 import { supabase } from '../services/supabase';
+import { getGenreGradient } from './FilmCard'; // Reuse the gradient logic
 
 interface FilmDetailModalProps {
   film: Film;
@@ -16,8 +17,10 @@ const FilmDetailModal: React.FC<FilmDetailModalProps> = ({ film, onClose, onVote
   const [qaSent, setQaSent] = useState(false);
 
   // Normalize Data
-  const displayImage = film.poster_url || film.image_url || 'https://placehold.co/300x450/f1f5f9/94a3b8?text=No+Img';
+  const hasImage = !!(film.poster_url || film.image_url);
+  const displayImage = film.poster_url || film.image_url;
   const displayDuration = film.duration || (film.duration_minutes ? `${film.duration_minutes} min` : 'N/A');
+  const genre = film.category || film.genre || 'Film';
 
   const handleQASubmit = async () => {
     if (qaQuestion.trim()) {
@@ -53,41 +56,57 @@ const FilmDetailModal: React.FC<FilmDetailModalProps> = ({ film, onClose, onVote
   };
 
   return (
-    // Updated Z-Index to z-[100] to ensure it covers the Layout BottomNav (which is z-50)
+    // Updated Z-Index to z-[100] to ensure it covers the Layout BottomNav
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-md animate-fade-in">
       <div 
         className="bg-white w-full max-w-md rounded-3xl overflow-hidden relative shadow-2xl flex flex-col max-h-[90vh] animate-scale-in"
         onClick={(e) => e.stopPropagation()}
       >
         
-        {/* Header Image (Clean, no text) */}
-        <div className="relative h-56 sm:h-64 bg-slate-100 flex-shrink-0">
-          <img 
-            src={displayImage} 
-            alt={film.title} 
-            className="w-full h-full object-cover"
-          />
+        {/* Header Image (Image or Dynamic Typography) */}
+        <div className={`relative h-56 sm:h-64 flex-shrink-0 ${!hasImage ? getGenreGradient(genre) : 'bg-slate-100'}`}>
+          {hasImage ? (
+            <>
+                <img 
+                    src={displayImage} 
+                    alt={film.title} 
+                    className="w-full h-full object-cover"
+                />
+                {/* Subtle gradient for depth on image */}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent pointer-events-none"></div>
+            </>
+          ) : (
+             <div className="w-full h-full flex flex-col justify-center items-center text-center p-6 relative">
+                 <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-bl-full"></div>
+                 <FilmIcon className="text-white/30 mb-3" size={48} />
+                 <h2 className="text-white font-black text-3xl leading-tight mb-2 drop-shadow-lg">
+                    {film.title}
+                 </h2>
+                 <div className="w-12 h-1 bg-white/50 rounded-full mb-3"></div>
+                 <p className="text-white/90 text-sm font-bold uppercase tracking-wider">
+                     {film.director}
+                 </p>
+             </div>
+          )}
+
           {/* Controls Overlay */}
           <button 
             onClick={onClose}
-            className="absolute top-4 right-4 w-10 h-10 bg-black/40 hover:bg-black/60 backdrop-blur-md rounded-full text-white flex items-center justify-center transition-all z-10 active:scale-95"
+            className="absolute top-4 right-4 w-10 h-10 bg-black/40 hover:bg-black/60 backdrop-blur-md rounded-full text-white flex items-center justify-center transition-all z-20 active:scale-95"
           >
             <X size={20} />
           </button>
           
-          <div className="absolute top-4 left-4 bg-black/60 backdrop-blur-md px-2.5 py-1 rounded-lg flex items-center gap-1.5">
+          <div className="absolute top-4 left-4 bg-black/60 backdrop-blur-md px-2.5 py-1 rounded-lg flex items-center gap-1.5 z-20">
             <Star size={14} className="text-yellow-400 fill-current" />
             <span className="text-white text-xs font-bold">{formatRating(film.rating)}</span>
           </div>
-
-          {/* Subtle gradient for depth, but no heavy overlay */}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent pointer-events-none"></div>
         </div>
 
         {/* Scrollable Content Body */}
         <div className="flex-grow overflow-y-auto p-6 space-y-6 bg-white no-scrollbar">
             
-            {/* Title & Main Info (Removed Category Badge) */}
+            {/* Title & Main Info */}
             <div>
                 <h2 className="text-2xl font-black text-slate-900 leading-tight mb-2">
                     {film.title}
@@ -154,7 +173,7 @@ const FilmDetailModal: React.FC<FilmDetailModalProps> = ({ film, onClose, onVote
                 )}
             </div>
             
-            {/* Spacer to ensure content isn't hidden behind safe areas on some devices */}
+            {/* Spacer */}
             <div className="h-4"></div>
         </div>
 

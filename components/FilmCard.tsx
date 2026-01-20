@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Star, ThumbsUp, Check, Clock, Bookmark, Play, Eye } from 'lucide-react';
+import { Star, ThumbsUp, Check, Clock, Bookmark, Play, Eye, Film as FilmIcon } from 'lucide-react';
 import { Film } from '../types';
 import VotingModal from './VotingModal';
 import FilmDetailModal from './FilmDetailModal';
@@ -15,15 +15,30 @@ interface FilmCardProps {
   isVotedProp?: boolean;
 }
 
+// Helper to determine gradient based on genre/category
+export const getGenreGradient = (genre: string = '') => {
+  const g = genre.toLowerCase();
+  if (g.includes('doc') || g.includes('env') || g.includes('nature')) return 'bg-gradient-to-br from-emerald-600 to-teal-800';
+  if (g.includes('sci') || g.includes('tech') || g.includes('future')) return 'bg-gradient-to-br from-violet-600 to-indigo-900';
+  if (g.includes('drama') || g.includes('thrill') || g.includes('cri')) return 'bg-gradient-to-br from-rose-600 to-red-900';
+  if (g.includes('com') || g.includes('fun')) return 'bg-gradient-to-br from-amber-400 to-orange-600';
+  if (g.includes('cul') || g.includes('art') || g.includes('hist')) return 'bg-gradient-to-br from-pink-600 to-purple-800';
+  if (g.includes('anim')) return 'bg-gradient-to-br from-sky-400 to-blue-600';
+  return 'bg-gradient-to-br from-slate-600 to-slate-800'; // Default
+};
+
 const FilmCard: React.FC<FilmCardProps> = ({ film, sectionName, showVoteBtn = true, onVoteSuccess, isVotedProp = false }) => {
   const [hasVoted, setHasVoted] = useState(isVotedProp);
   const [showVotingModal, setShowVotingModal] = useState(false);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [isInWatchlist, setIsInWatchlist] = useState(false);
 
-  // Normalize Data
-  const displayImage = film.poster_url || film.image_url || 'https://placehold.co/300x450/f1f5f9/94a3b8?text=No+Img';
+  // Check if we have a valid image
+  const hasImage = !!(film.poster_url || film.image_url);
+  const displayImage = film.poster_url || film.image_url;
+  
   const displayDuration = film.duration || (film.duration_minutes ? `${film.duration_minutes} min` : 'N/A');
+  const genre = film.category || film.genre || 'Film';
 
   useEffect(() => {
     // Check local storage for watchlist
@@ -90,17 +105,39 @@ const FilmCard: React.FC<FilmCardProps> = ({ film, sectionName, showVoteBtn = tr
             : 'border-slate-100 hover:border-slate-200'
         }`}
       >
-        {/* Image */}
-        <div className="relative aspect-[3/4] rounded-xl overflow-hidden bg-slate-100 mb-3">
-          <img 
-            src={displayImage} 
-            alt={film.title} 
-            className={`w-full h-full object-cover transition-transform duration-500 group-hover:scale-105 ${
-                hasVoted ? 'grayscale-[0.3]' : ''
-            } ${!showVoteBtn ? 'grayscale-[0.5]' : ''}`}
-            loading="lazy"
-          />
-          <div className="absolute top-2 right-2 bg-black/60 backdrop-blur-md px-2 py-0.5 rounded-lg flex items-center gap-1">
+        {/* Image / Typography Placeholder */}
+        <div className={`relative aspect-[3/4] rounded-xl overflow-hidden mb-3 shadow-inner ${!hasImage ? getGenreGradient(genre) : 'bg-slate-100'}`}>
+          {hasImage ? (
+            <img 
+                src={displayImage} 
+                alt={film.title} 
+                className={`w-full h-full object-cover transition-transform duration-500 group-hover:scale-105 ${
+                    hasVoted ? 'grayscale-[0.3]' : ''
+                } ${!showVoteBtn ? 'grayscale-[0.5]' : ''}`}
+                loading="lazy"
+            />
+          ) : (
+             // Dynamic Typography Card
+             <div className="w-full h-full p-4 flex flex-col justify-center items-center text-center relative">
+                {/* Decorative Pattern */}
+                <div className="absolute top-0 right-0 w-20 h-20 bg-white/10 rounded-bl-full"></div>
+                <div className="absolute bottom-0 left-0 w-12 h-12 bg-black/10 rounded-tr-full"></div>
+                
+                <FilmIcon className="text-white/30 mb-2" size={24} />
+                <h3 className="text-white font-black text-lg leading-tight line-clamp-3 mb-2 drop-shadow-md">
+                    {film.title}
+                </h3>
+                <div className="w-8 h-0.5 bg-white/50 rounded-full mb-2"></div>
+                <p className="text-white/80 text-xs font-medium uppercase tracking-wider line-clamp-1">
+                    {film.director}
+                </p>
+                <span className="absolute bottom-3 text-[9px] text-white/60 font-bold uppercase tracking-widest border border-white/20 px-2 py-0.5 rounded-full">
+                    {genre}
+                </span>
+             </div>
+          )}
+
+          <div className="absolute top-2 right-2 bg-black/60 backdrop-blur-md px-2 py-0.5 rounded-lg flex items-center gap-1 z-20">
             <Star size={10} className="text-yellow-400 fill-current" />
             <span className="text-white text-[10px] font-bold">{formatRating(film.rating)}</span>
           </div>
@@ -113,7 +150,7 @@ const FilmCard: React.FC<FilmCardProps> = ({ film, sectionName, showVoteBtn = tr
           </button>
           
           {hasVoted && (
-              <div className="absolute inset-0 bg-green-900/10 flex items-center justify-center backdrop-blur-[1px] animate-fade-in">
+              <div className="absolute inset-0 bg-green-900/10 flex items-center justify-center backdrop-blur-[1px] animate-fade-in z-20">
                   <div className="bg-white text-green-700 px-3 py-1.5 rounded-full text-xs font-bold flex items-center gap-1.5 shadow-md border border-green-100">
                       <Check size={14} strokeWidth={3} /> Voted
                   </div>
@@ -124,7 +161,6 @@ const FilmCard: React.FC<FilmCardProps> = ({ film, sectionName, showVoteBtn = tr
         {/* Content */}
         <div className="flex-grow flex flex-col">
           <div className="mb-3">
-            {/* Removed Section Name and Genre for cleaner design as requested */}
             <h3 className="font-bold text-slate-900 text-sm leading-snug line-clamp-2">{film.title}</h3>
             <p className="text-xs text-slate-500 mt-0.5 line-clamp-1">{film.director}</p>
           </div>
