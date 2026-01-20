@@ -117,23 +117,16 @@ const FilmCard: React.FC<FilmCardProps> = ({ film, sectionName, showVoteBtn = tr
                 loading="lazy"
             />
           ) : (
-             // Dynamic Typography Card
+             // Dynamic Typography Card (Simplified)
              <div className="w-full h-full p-4 flex flex-col justify-center items-center text-center relative">
                 {/* Decorative Pattern */}
                 <div className="absolute top-0 right-0 w-20 h-20 bg-white/10 rounded-bl-full"></div>
                 <div className="absolute bottom-0 left-0 w-12 h-12 bg-black/10 rounded-tr-full"></div>
                 
-                <FilmIcon className="text-white/30 mb-2" size={24} />
-                <h3 className="text-white font-black text-lg leading-tight line-clamp-3 mb-2 drop-shadow-md">
+                {/* Just the Title - Clean & Bold */}
+                <h3 className="text-white font-black text-xl leading-tight line-clamp-4 drop-shadow-md">
                     {film.title}
                 </h3>
-                <div className="w-8 h-0.5 bg-white/50 rounded-full mb-2"></div>
-                <p className="text-white/80 text-xs font-medium uppercase tracking-wider line-clamp-1">
-                    {film.director}
-                </p>
-                <span className="absolute bottom-3 text-[9px] text-white/60 font-bold uppercase tracking-widest border border-white/20 px-2 py-0.5 rounded-full">
-                    {genre}
-                </span>
              </div>
           )}
 

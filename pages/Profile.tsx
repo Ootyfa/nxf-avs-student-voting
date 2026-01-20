@@ -243,9 +243,10 @@ const ProfilePage: React.FC = () => {
                                             alt={film.title}
                                        />
                                    ) : (
-                                       <div className="w-full h-full flex flex-col justify-center items-center text-center p-1">
-                                           <FilmIcon className="text-white/30 mb-1" size={16} />
-                                           <p className="text-[10px] text-white font-bold leading-tight line-clamp-3">
+                                       // Simplified Typography - Title Only
+                                       <div className="w-full h-full flex flex-col justify-center items-center text-center p-2 relative">
+                                            <div className="absolute top-0 right-0 w-8 h-8 bg-white/10 rounded-bl-lg"></div>
+                                           <p className="text-xs text-white font-black leading-tight line-clamp-4 drop-shadow-md">
                                                {film.title}
                                            </p>
                                        </div>

@@ -290,14 +290,13 @@ const HomePage: React.FC = () => {
                             alt={film.title}
                         />
                       ) : (
-                         <div className="w-full h-full flex flex-col justify-center items-center text-center p-2 relative">
+                         // Simplified Typography - Title Only
+                         <div className="w-full h-full flex flex-col justify-center items-center text-center p-3 relative">
                             <div className="absolute top-0 right-0 w-8 h-8 bg-white/10 rounded-bl-lg"></div>
-                            <FilmIcon className="text-white/30 mb-2" size={20} />
-                            <h4 className="text-white font-black text-xs leading-tight mb-1 drop-shadow-md line-clamp-3">
+                            
+                            <h4 className="text-white font-black text-sm leading-tight drop-shadow-md line-clamp-4">
                                 {film.title}
                             </h4>
-                            <div className="w-4 h-0.5 bg-white/50 rounded-full mb-1"></div>
-                            <p className="text-white/80 text-[10px] uppercase line-clamp-1">{film.director}</p>
                          </div>
                       )}
                       
