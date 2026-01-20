@@ -16,8 +16,8 @@ interface FilmCardProps {
 }
 
 // Helper to determine gradient based on genre/category
-export const getGenreGradient = (genre: string = '') => {
-  const g = genre.toLowerCase();
+export const getGenreGradient = (genre: string | null | undefined) => {
+  const g = (genre || '').toLowerCase().trim();
   if (g.includes('doc') || g.includes('env') || g.includes('nature')) return 'bg-gradient-to-br from-emerald-600 to-teal-800';
   if (g.includes('sci') || g.includes('tech') || g.includes('future')) return 'bg-gradient-to-br from-violet-600 to-indigo-900';
   if (g.includes('drama') || g.includes('thrill') || g.includes('cri')) return 'bg-gradient-to-br from-rose-600 to-red-900';
@@ -32,10 +32,14 @@ const FilmCard: React.FC<FilmCardProps> = ({ film, sectionName, showVoteBtn = tr
   const [showVotingModal, setShowVotingModal] = useState(false);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [isInWatchlist, setIsInWatchlist] = useState(false);
+  const [imageError, setImageError] = useState(false);
 
-  // Check if we have a valid image
-  const hasImage = !!(film.poster_url || film.image_url);
+  // Check if we have a valid image URL string first
+  const hasUrl = !!(film.poster_url?.trim() || film.image_url?.trim());
   const displayImage = film.poster_url || film.image_url;
+  
+  // Final check: URL exists AND it hasn't failed to load
+  const showImage = hasUrl && !imageError;
   
   const displayDuration = film.duration || (film.duration_minutes ? `${film.duration_minutes} min` : 'N/A');
   const genre = film.category || film.genre || 'Film';
@@ -106,18 +110,19 @@ const FilmCard: React.FC<FilmCardProps> = ({ film, sectionName, showVoteBtn = tr
         }`}
       >
         {/* Image / Typography Placeholder */}
-        <div className={`relative aspect-[3/4] rounded-xl overflow-hidden mb-3 shadow-inner ${!hasImage ? getGenreGradient(genre) : 'bg-slate-100'}`}>
-          {hasImage ? (
+        <div className={`relative aspect-[3/4] rounded-xl overflow-hidden mb-3 shadow-inner ${!showImage ? getGenreGradient(genre) : 'bg-slate-100'}`}>
+          {showImage ? (
             <img 
                 src={displayImage} 
                 alt={film.title} 
+                onError={() => setImageError(true)}
                 className={`w-full h-full object-cover transition-transform duration-500 group-hover:scale-105 ${
                     hasVoted ? 'grayscale-[0.3]' : ''
                 } ${!showVoteBtn ? 'grayscale-[0.5]' : ''}`}
                 loading="lazy"
             />
           ) : (
-             // Dynamic Typography Card (Simplified)
+             // Dynamic Typography Card (Simplified - Title Only)
              <div className="w-full h-full p-4 flex flex-col justify-center items-center text-center relative">
                 {/* Decorative Pattern */}
                 <div className="absolute top-0 right-0 w-20 h-20 bg-white/10 rounded-bl-full"></div>

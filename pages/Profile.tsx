@@ -33,6 +33,8 @@ const ProfilePage: React.FC = () => {
   // Watchlist State
   const [watchlistIds, setWatchlistIds] = useState<string[]>([]);
   const [watchlistFilms, setWatchlistFilms] = useState<Film[]>([]);
+  // Track broken images
+  const [brokenImages, setBrokenImages] = useState<Record<string, boolean>>({});
 
   // Refresh data
   useEffect(() => {
@@ -70,6 +72,7 @@ const ProfilePage: React.FC = () => {
           
           if (data) {
               setWatchlistFilms(data as Film[]);
+              setBrokenImages({});
           }
       } catch (e) {
           console.error("Error fetching watchlist", e);
@@ -229,18 +232,20 @@ const ProfilePage: React.FC = () => {
            {watchlistFilms.length > 0 ? (
                <div className="flex gap-4 overflow-x-auto no-scrollbar pb-2">
                    {watchlistFilms.map(film => {
-                       const hasImage = !!(film.poster_url || film.image_url);
+                       const hasUrl = !!(film.poster_url?.trim() || film.image_url?.trim());
                        const displayImage = film.poster_url || film.image_url;
+                       const showImage = hasUrl && !brokenImages[film.id];
                        const genre = film.category || film.genre || 'Film';
                        
                        return (
                            <div key={film.id} className="min-w-[100px] w-[100px]">
-                               <div className={`w-full h-32 rounded-xl shadow-sm mb-2 overflow-hidden ${!hasImage ? getGenreGradient(genre) : 'bg-slate-100'}`}>
-                                   {hasImage ? (
+                               <div className={`w-full h-32 rounded-xl shadow-sm mb-2 overflow-hidden ${!showImage ? getGenreGradient(genre) : 'bg-slate-100'}`}>
+                                   {showImage ? (
                                        <img 
                                             src={displayImage} 
                                             className="w-full h-full object-cover" 
                                             alt={film.title}
+                                            onError={() => setBrokenImages(prev => ({...prev, [film.id]: true}))}
                                        />
                                    ) : (
                                        // Simplified Typography - Title Only

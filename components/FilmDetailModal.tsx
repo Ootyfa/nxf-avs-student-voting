@@ -15,10 +15,13 @@ interface FilmDetailModalProps {
 const FilmDetailModal: React.FC<FilmDetailModalProps> = ({ film, onClose, onVoteClick, hasVoted }) => {
   const [qaQuestion, setQaQuestion] = useState('');
   const [qaSent, setQaSent] = useState(false);
+  const [imageError, setImageError] = useState(false);
 
   // Normalize Data
-  const hasImage = !!(film.poster_url || film.image_url);
+  const hasUrl = !!(film.poster_url?.trim() || film.image_url?.trim());
   const displayImage = film.poster_url || film.image_url;
+  const showImage = hasUrl && !imageError;
+
   const displayDuration = film.duration || (film.duration_minutes ? `${film.duration_minutes} min` : 'N/A');
   const genre = film.category || film.genre || 'Film';
 
@@ -64,12 +67,13 @@ const FilmDetailModal: React.FC<FilmDetailModalProps> = ({ film, onClose, onVote
       >
         
         {/* Header Image (Image or Dynamic Typography) */}
-        <div className={`relative h-56 sm:h-64 flex-shrink-0 ${!hasImage ? getGenreGradient(genre) : 'bg-slate-100'}`}>
-          {hasImage ? (
+        <div className={`relative h-56 sm:h-64 flex-shrink-0 ${!showImage ? getGenreGradient(genre) : 'bg-slate-100'}`}>
+          {showImage ? (
             <>
                 <img 
                     src={displayImage} 
                     alt={film.title} 
+                    onError={() => setImageError(true)}
                     className="w-full h-full object-cover"
                 />
                 {/* Subtle gradient for depth on image */}

@@ -20,6 +20,9 @@ const HomePage: React.FC = () => {
   const [totalStudents, setTotalStudents] = useState(0);
   const [loading, setLoading] = useState(true);
 
+  // Track broken images for the scroll view
+  const [brokenImages, setBrokenImages] = useState<Record<string, boolean>>({});
+
   useEffect(() => {
     // Get user avatar
     const name = localStorage.getItem('userName') || 'Guest';
@@ -79,6 +82,7 @@ const HomePage: React.FC = () => {
       if (festivalFilmsData && festivalFilmsData.length > 0) {
         const mappedFilms = festivalFilmsData.map((item: any) => item.master_films) as Film[];
         setFestivalFilms(mappedFilms);
+        setBrokenImages({}); // Reset broken images when list changes
       } else {
         setFestivalFilms([]);
       }
@@ -272,8 +276,9 @@ const HomePage: React.FC = () => {
           
           <div className="flex overflow-x-auto gap-4 pb-4 -mx-6 px-6 no-scrollbar snap-x snap-mandatory">
             {festivalFilms.length > 0 ? festivalFilms.map((film) => {
-               const hasImage = !!(film.poster_url || film.image_url);
+               const hasUrl = !!(film.poster_url?.trim() || film.image_url?.trim());
                const displayImage = film.poster_url || film.image_url;
+               const showImage = hasUrl && !brokenImages[film.id];
                const genre = film.category || film.genre || 'Film';
 
                return (
@@ -282,12 +287,13 @@ const HomePage: React.FC = () => {
                     onClick={() => navigate('/films')}
                     className="snap-center flex-shrink-0 w-[150px] group cursor-pointer"
                   >
-                    <div className={`relative aspect-[2/3] rounded-2xl overflow-hidden mb-3 shadow-sm border border-slate-100 ${!hasImage ? getGenreGradient(genre) : 'bg-slate-100'}`}>
-                      {hasImage ? (
+                    <div className={`relative aspect-[2/3] rounded-2xl overflow-hidden mb-3 shadow-sm border border-slate-100 ${!showImage ? getGenreGradient(genre) : 'bg-slate-100'}`}>
+                      {showImage ? (
                         <img 
                             src={displayImage} 
                             className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                             alt={film.title}
+                            onError={() => setBrokenImages(prev => ({...prev, [film.id]: true}))}
                         />
                       ) : (
                          // Simplified Typography - Title Only
